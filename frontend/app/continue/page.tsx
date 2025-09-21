@@ -63,7 +63,7 @@ const VideoModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
             <video
               ref={videoRef}
               className="w-full h-full"
-              src="/videos/Demo.mp4"
+              src="https://res.cloudinary.com/dpisgqkxx/video/upload/v1758457882/Demo_h2jk5s.mp4"
               controls
               playsInline
               preload="metadata"

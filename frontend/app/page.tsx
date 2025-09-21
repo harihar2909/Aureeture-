@@ -273,7 +273,7 @@ const HeroSection = ({ onOpenLead }: { onOpenLead: () => void }) => {
                                     preload="metadata"
                                     poster="/placeholder.jpg"
                                 >
-                                    <source src="/videos/Demo.mp4" type="video/mp4" />
+                                    <source src="https://res.cloudinary.com/dpisgqkxx/video/upload/v1758457882/Demo_h2jk5s.mp4" type="video/mp4" />
                                     Your browser does not support the video tag.
                                 </video>
                             </div>
