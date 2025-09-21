@@ -1,0 +1,30 @@
+# ## Security: Ignore environment files for BOTH frontend and backend ##
+# These contain secret keys and must NOT be on GitHub.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ## Dependencies: Ignore for BOTH frontend and backend ##
+# These folders are huge and can be re-installed with 'npm install'.
+node_modules/
+
+# ## Frontend (Next.js / React) ##
+# Ignore the build output and Vercel-specific files.
+.next/
+out/
+.vercel/
+
+# ## Backend (Node.js / Express) ##
+# Ignore compiled TypeScript/JavaScript folders and logs.
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ## Operating System Files ##
+# Ignore system-specific files.
+.DS_Store
+Thumbs.db
