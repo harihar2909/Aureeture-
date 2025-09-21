@@ -287,8 +287,18 @@ const TalentMatchPage: React.FC = () => {
                                     <CurvedButton gradient className="from-accent to-accent/80 w-full sm:w-auto">
                                       Get Started Today
                                     </CurvedButton>
-                                    <CurvedButton asChild variant="outline" className="bg-transparent border-primary-foreground/50 hover:bg-primary-foreground/10 w-full sm:w-auto">
-                                      <a href="https://cal.com/aureetureai-india/30min" target="_blank" rel="noopener noreferrer">Schedule a Demo</a>
+                                    <CurvedButton
+                                      variant="outline"
+                                      className="bg-transparent border-primary-foreground/50 hover:bg-primary-foreground/10 w-full sm:w-auto"
+                                      onClick={() =>
+                                        window.open(
+                                          "https://cal.com/aureetureai-india/30min",
+                                          "_blank",
+                                          "noopener,noreferrer"
+                                        )
+                                      }
+                                    >
+                                      Schedule a Demo
                                     </CurvedButton>
                                 </div>
                             </div>
