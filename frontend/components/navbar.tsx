@@ -9,13 +9,14 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { CurvedNavShell } from "@/components/ui/curved-nav-shell"
 import { usePathname } from "next/navigation"
+import { SignInButton, useUser } from "@clerk/nextjs"
 
 // Define navigation items in an array for easier mapping and maintenance
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/velocity-cohort", label: "Velocity Cohort" },
   { href: "/enterprise", label: "Enterprise" },
-  { href: "/contact", label: "Contact" },
+  { href: "/continue", label: "Continue" },
 ]
 
 export default function Navbar() {
@@ -24,6 +25,7 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const { isSignedIn } = useUser()
 
   // Effect for mounting and scroll listener
   useEffect(() => {
@@ -122,7 +124,7 @@ export default function Navbar() {
                 {navItems.map((item) => <NavLink key={item.href} {...item} />)}
               </ul>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                  <Button
                     variant="ghost"
                     size="icon"
@@ -132,13 +134,27 @@ export default function Navbar() {
                   >
                     {mounted && (theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />)}
                   </Button>
-                  
-                  <Link href="/continue" className="inline-block">
-                    <Button size="sm" className="rounded-full shadow-md hover:shadow-primary/30 transition-shadow">
-                      Continue
-                      <ArrowRight className="size-4 ml-2" />
-                    </Button>
+                  {/* Contact: smaller/lighter text-only (swapped with Continue) */}
+                  <Link href="/contact" className="inline-block">
+                    <span className="text-xs md:text-sm font-medium text-muted-foreground/70 px-2 select-none">
+                      Contact
+                    </span>
                   </Link>
+                  {isSignedIn ? (
+                    <Link href="/dashboard" className="inline-block">
+                      <Button className="h-11 px-6 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
+                        Career Explorer
+                        <ArrowRight className="size-4 ml-2" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <SignInButton mode="modal" forceRedirectUrl="/create-profile">
+                      <Button className="h-11 px-6 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
+                        Career Explorer
+                        <ArrowRight className="size-4 ml-2" />
+                      </Button>
+                    </SignInButton>
+                  )}
               </div>
             </div>
 
@@ -183,12 +199,27 @@ export default function Navbar() {
             <ul className="flex flex-col gap-2">
               {navItems.map((item) => <NavLink key={item.href} {...item} />)}
             </ul>
-            <Link href="/continue" className="w-full" onClick={() => setMobileMenuOpen(false)}>
-              <Button className="w-full" size="lg">
-                Continue
-                <ArrowRight className="size-4 ml-2" />
-              </Button>
+            {/* Contact on mobile: smaller/lighter text-only (swapped with Continue) */}
+            <Link href="/contact" className="w-full" onClick={() => setMobileMenuOpen(false)}>
+              <div className="w-full text-center text-sm text-muted-foreground/70 py-2 select-none">
+                Contact <ArrowRight className="inline-block align-middle size-4 ml-1" />
+              </div>
             </Link>
+            {isSignedIn ? (
+              <Link href="/dashboard" className="w-full" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="w-full h-12 rounded-full shadow-lg hover:shadow-xl bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
+                  Career Explorer
+                  <ArrowRight className="size-4 ml-2" />
+                </Button>
+              </Link>
+            ) : (
+              <SignInButton mode="modal" forceRedirectUrl="/create-profile">
+                <Button className="w-full h-12 rounded-full shadow-lg hover:shadow-xl bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10" onClick={() => setMobileMenuOpen(false)}>
+                  Career Explorer
+                  <ArrowRight className="size-4 ml-2" />
+                </Button>
+              </SignInButton>
+            )}
           </div>
         </motion.div>
       )}

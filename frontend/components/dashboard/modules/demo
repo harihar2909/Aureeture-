@@ -1,0 +1,202 @@
+"use client";
+
+import React, { FC, ReactNode, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  ArrowRight, Briefcase, GraduationCap, Lightbulb, Target, UserPlus, 
+  Award, AlertTriangle, MapPin, Wrench, Star, Sparkles, Bookmark, 
+  RotateCw, Zap, Rocket
+} from 'lucide-react';
+
+// --- UI Components (from shadcn/ui or similar) ---
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CardTitle, CardDescription } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// --- TYPESCRIPT TYPES ---
+type PathStep = { year: number; title: string; institution: string; icon: FC<any>; status: 'completed' | 'future'; };
+type Job = { title: string; company: string; category: string; link: string; featured?: boolean; };
+type UserStats = { ideas: number; hackathons: number; connections: number; };
+type SimpleSkill = { name: string };
+
+// --- WIDGET WRAPPER ---
+const Widget: FC<{ children: ReactNode; className?: string }> = ({ children, className }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+    whileInView={{ opacity: 1, scale: 1, y: 0 }}
+    viewport={{ once: true, amount: 0.2 }}
+    transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+    className={`bg-card/60 dark:bg-neutral-900/60 backdrop-blur-xl border border-border/20 dark:border-white/10 rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-black/20 h-full ${className}`}
+  >
+    {children}
+  </motion.div>
+);
+
+// --- MOCK DATA FOR AI STARTUP FOUNDER ---
+const user = { name: "Aarav Sharma", avatarUrl: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aarav", status: "Aspiring AI Entrepreneur" };
+const careerPath: { steps: PathStep[]; goal: string; } = {
+  steps: [{ year: 2025, title: 'B.Tech CSE', institution: 'IIT Bombay', icon: GraduationCap, status: 'completed' }, { year: 2026, title: 'AI Startup Founder', institution: 'Aureeture Launchpad', icon: Rocket, status: 'future' }],
+  goal: "To build a GenAI platform for sustainable farming in India."
+};
+const skillGaps: SimpleSkill[] = [{ name: 'Financial Modeling' }, { name: 'Pitch Deck Creation' }, { name: 'Market Research' }, { name: 'Agile Project Management' }];
+const jobRecommendations: Job[] = [{ title: 'Co-Founder for HealthTech Idea', company: 'Aureeture Launchpad', category: 'Startup', link: '#', featured: true }, { title: 'Product Management Intern', company: 'A Fintech Startup', category: 'Internship', link: '#' }, { title: 'Campus Ambassador', company: 'Aureeture', category: 'Leadership', link: '#' }];
+const userStats: UserStats = { ideas: 3, hackathons: 4, connections: 42 };
+
+// --- ENHANCED & NEW SECTION COMPONENTS ---
+
+const ProfileHeader: FC = () => (
+    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 border-2 border-primary/50"><AvatarImage src={user.avatarUrl} /><AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback></Avatar>
+            <div>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{user.name}</h1>
+                <p className="text-muted-foreground">{user.status}</p>
+            </div>
+        </div>
+    </motion.div>
+);
+
+const CareerPathTimeline: FC = () => {
+    const nextStep = careerPath.steps.find(s => s.status === 'future');
+    return (
+        <Widget className="p-6 md:p-8 flex flex-col lg:flex-row lg:items-center gap-8">
+            <div className="flex-grow">
+                <CardTitle className="flex items-center gap-2 mb-2"><MapPin size={20} /> My Entrepreneurial Path</CardTitle>
+                <CardDescription className="italic mb-6">"{careerPath.goal}"</CardDescription>
+                {careerPath.steps.map((step) => (
+                    <div key={step.year} className={`relative flex items-start gap-4 mb-6 last:mb-0 pl-10 ${step.status === 'completed' ? 'opacity-60' : ''}`}>
+                        <div className="absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center bg-muted border">
+                            <step.icon className={`w-4 h-4 ${step.status === 'completed' ? 'text-green-500' : 'text-primary'}`} />
+                        </div>
+                        <div>
+                            <p className="font-bold">{step.title} <span className="text-sm font-normal text-muted-foreground">({step.year})</span></p>
+                            <p className="text-sm text-muted-foreground">{step.institution}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {nextStep && (
+                <div className="lg:w-1/3 flex-shrink-0 text-center lg:text-left p-6 bg-primary/10 rounded-xl border border-primary/20">
+                    <h3 className="text-lg font-bold flex items-center gap-2 justify-center lg:justify-start"><Sparkles className="text-primary" size={20}/> Your Next Step</h3>
+                    <p className="text-muted-foreground mt-1 mb-4">Focus on acquiring foundational startup skills to launch your venture.</p>
+                    <Button className="w-full bg-gradient-to-r from-primary to-primary/80">Explore Launchpad</Button>
+                    <Button variant="ghost" size="sm" className="mt-2 text-muted-foreground"><Target className="w-4 h-4 mr-2" /> Change Path</Button>
+                </div>
+            )}
+        </Widget>
+    );
+};
+
+// --- NEW COMPONENT: SkillGapAnalysis ---
+const SkillGapAnalysis: FC = () => (
+    <Widget className="p-6">
+        <CardTitle className="flex items-center gap-2 mb-2"><Wrench size={20} /> Skill Gap Analysis</CardTitle>
+        <CardDescription>For your 'AI Startup Founder' goal.</CardDescription>
+        <div className="flex flex-wrap gap-2 mt-4">
+            {skillGaps.map(skill => (
+                <Badge key={skill.name} variant="outline" className="text-sm py-1 px-3">{skill.name}</Badge>
+            ))}
+        </div>
+    </Widget>
+);
+
+// --- NEW COMPONENT: RecommendedResources ---
+const RecommendedResources: FC = () => (
+    <Widget className="p-6">
+        <CardTitle className="flex items-center gap-2 mb-2"><Lightbulb size={20} /> Recommended Resources</CardTitle>
+        <CardDescription>Bridge your skill gaps with Aureeture.</CardDescription>
+        <div className="space-y-4 mt-4">
+            <Alert className="bg-primary/10 border-primary/20">
+                <Zap className="h-4 w-4 text-primary" />
+                <AlertTitle>Upcoming Bootcamp!</AlertTitle>
+                <AlertDescription>Join 'Idea to MVP in 30 Days' to master product development.</AlertDescription>
+            </Alert>
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <p className="font-semibold text-sm">National Innovation Hackathon</p>
+                <Button size="sm" variant="ghost">Participate</Button>
+            </div>
+        </div>
+    </Widget>
+);
+
+const AnimatedStat: FC<{ label: string; value: number }> = ({ label, value }) => {
+    const [inView, setInView] = useState(false);
+    
+    const refCallback = useCallback((node: HTMLDivElement | null) => {
+        setInView(!!node);
+    }, []);
+    
+    return (
+        <motion.div ref={refCallback} className="text-center">
+            <p className="text-3xl font-bold tracking-tighter">{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+        </motion.div>
+    );
+};
+
+const StatsAndAchievements: FC = () => (
+    <Widget className="p-6">
+        <CardTitle className="flex items-center gap-2 mb-4"><Star size={20} /> Stats & Achievements</CardTitle>
+        <div className="flex justify-around items-center mb-4">
+            <AnimatedStat label="Ideas Submitted" value={userStats.ideas} />
+            <AnimatedStat label="Hackathons" value={userStats.hackathons} />
+            <AnimatedStat label="Connections" value={userStats.connections} />
+        </div>
+        <Alert className="bg-amber-500/10 border-amber-500/20"><Award className="h-4 w-4 !text-amber-500" /><AlertTitle>Latest Badge</AlertTitle><AlertDescription>Won 'Best Pitch' at Innovate India '25!</AlertDescription></Alert>
+    </Widget>
+);
+
+const JobRecommendations: FC = () => (
+    <Widget className="p-6 md:p-8">
+        <CardTitle className="flex items-center gap-2 mb-4"><Briefcase size={20} /> Curated Opportunities</CardTitle>
+        <div className="space-y-4">
+            {jobRecommendations.map(job => (
+                <div key={job.title} className={`flex items-start justify-between p-4 rounded-lg gap-4 transition-colors ${job.featured ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30'}`}>
+                    <div className="flex-grow">
+                        <div className="flex items-center gap-2"><p className="font-semibold">{job.title}</p>{job.featured && <Badge>Featured</Badge>}</div>
+                        <p className="text-sm text-muted-foreground">{job.company} • {job.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <TooltipProvider><Tooltip><TooltipTrigger asChild><Button size="icon" variant="ghost"><Bookmark className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Save for later</p></TooltipContent></Tooltip></TooltipProvider>
+                        <Button size="sm" asChild><a href={job.link}>Details <ArrowRight className="h-4 w-4 ml-2"/></a></Button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </Widget>
+);
+
+// --- MAIN OVERVIEW PAGE ---
+const FounderDashboard: FC = () => {
+  return (
+    <div className="min-h-screen w-full bg-background text-foreground p-4 md:p-6 lg:p-8 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+        <div className="absolute w-[500px] h-[500px] bg-purple-500/30 dark:bg-purple-500/10 rounded-full blur-3xl animate-aurora-1"></div>
+        <div className="absolute w-[400px] h-[400px] bg-blue-500/30 dark:bg-blue-500/10 rounded-full blur-3xl animate-aurora-2"></div>
+      </div>
+      <div className="absolute inset-0 w-full h-full bg-[url('data:image/svg+xml,...')] opacity-20 -z-10"></div>
+      
+      <main className="max-w-7xl mx-auto space-y-8">
+        <ProfileHeader />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Phase 1: Foundation */}
+          <div className="lg:col-span-4"><CareerPathTimeline /></div>
+          
+          {/* Phase 2: Development (Problem & Solution) */}
+          <div className="lg:col-span-2"><SkillGapAnalysis /></div>
+          <div className="lg:col-span-2"><RecommendedResources /></div>
+
+          {/* Phase 3: Growth & Action */}
+          <div className="lg:col-span-2"><StatsAndAchievements /></div>
+          <div className="lg:col-span-2"><JobRecommendations /></div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default FounderDashboard;

@@ -2,6 +2,7 @@ import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ClerkProvider } from "@clerk/nextjs"
 import ConditionalNavbar from "@/components/conditional-navbar"
 import ConditionalFooter from "@/components/conditional-footer"
 import SkipToContent from "@/components/skip-to-content"
@@ -72,14 +73,16 @@ export default function RootLayout({
       className={`${systemFonts.inter.variable} ${systemFonts.mono.variable} ${systemFonts.heading.variable}`}
     >
       <body className={systemFonts.inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <SkipToContent />
-          <ConditionalNavbar />
-          <main id="main-content">
-            {children}
-          </main>
-          <ConditionalFooter />
-        </ThemeProvider>
+        <ClerkProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <SkipToContent />
+            <ConditionalNavbar />
+            <main id="main-content">
+              {children}
+            </main>
+            <ConditionalFooter />
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   )

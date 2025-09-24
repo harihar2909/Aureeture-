@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import Lead from './modals/Lead'; 
 import EnterpriseDemo from './modals/EnterpriseDemo';
 import Message from './modals/Message'; // <-- 1. Import the new Message model
+import Profile from './modals/Profile';
 
 dotenv.config();
 
@@ -40,6 +41,45 @@ app.post('/api/leads', async (req, res) => {
     res.status(201).json({ message: 'Lead saved successfully!' });
   } catch (error) {
     console.error('Error saving lead:', error);
+    res.status(500).json({ message: 'An error occurred on the server.' });
+  }
+});
+
+// --- PROFILE API ---
+// Get profile by Clerk userId
+app.get('/api/profile', async (req, res) => {
+  try {
+    const { userId } = req.query as { userId?: string };
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+    const profile = await Profile.findOne({ userId });
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+    res.json(profile);
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ message: 'An error occurred on the server.' });
+  }
+});
+
+// Create or update profile
+app.post('/api/profile', async (req, res) => {
+  try {
+    const { userId, email, name, education, skills, interests } = req.body;
+    if (!userId || !email || !name) {
+      return res.status(400).json({ message: 'userId, email, and name are required.' });
+    }
+    const update = { email, name, education, skills, interests };
+    const profile = await Profile.findOneAndUpdate(
+      { userId },
+      { $set: update },
+      { upsert: true, new: true }
+    );
+    res.status(201).json(profile);
+  } catch (error) {
+    console.error('Error saving profile:', error);
     res.status(500).json({ message: 'An error occurred on the server.' });
   }
 });

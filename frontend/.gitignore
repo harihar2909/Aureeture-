@@ -28,3 +28,5 @@ yarn-error.log*
 # Ignore system-specific files.
 .DS_Store
 Thumbs.db
+# clerk configuration (can include secrets)
+/.clerk/
