@@ -8,7 +8,7 @@
   }
   /* Section layout helpers for consistent responsive spacing */
   .section {
-    @apply py-16 sm:py-24 px-4;
+    @apply py-12 sm:py-16 px-4;
   }
   .section-container {
     @apply max-w-7xl mx-auto;

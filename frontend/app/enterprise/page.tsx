@@ -48,7 +48,7 @@ const SectionHeading: FC<{ title: string; subtitle: string }> = ({ title, subtit
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.3 }}
-      className="text-center mb-16"
+      className="text-center mb-12"
     >
         <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
           ✨
@@ -182,7 +182,7 @@ export default function EnterprisePage() {
                 <div className="absolute w-[500px] h-[500px] bg-sky-500/15 dark:bg-sky-500/10 rounded-full blur-3xl animate-aurora-2 opacity-60"></div>
             </div>
       
-            <main className="space-y-24 md:space-y-32 pt-32 md:pt-40 pb-24">
+            <main className="space-y-16 md:space-y-20 pt-28 md:pt-32 pb-20">
 
                 <section id="overview" className="section text-center scroll-mt-28">
                     <div className="section-container">

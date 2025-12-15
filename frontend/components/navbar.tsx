@@ -9,7 +9,6 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { CurvedNavShell } from "@/components/ui/curved-nav-shell"
 import { usePathname } from "next/navigation"
-import { SignInButton, useUser } from "@clerk/nextjs"
 
 // Define navigation items in an array for easier mapping and maintenance
 const navItems = [
@@ -25,7 +24,6 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
-  const { isSignedIn } = useUser()
 
   // Effect for mounting and scroll listener
   useEffect(() => {
@@ -52,18 +50,39 @@ export default function Navbar() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
   
-  const NavLink = ({ href, label }: { href: string; label: string }) => {
+  const NavLink = ({
+    href,
+    label,
+    variant = "desktop",
+  }: {
+    href: string
+    label: string
+    variant?: "desktop" | "mobile"
+  }) => {
     const isActive = pathname === href
+    const baseClasses =
+      "block px-4 py-2 text-sm font-medium transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+
+    const desktopClasses =
+      "lg:inline-block rounded-full " +
+      (isActive
+        ? "text-primary bg-primary/10"
+        : "text-muted-foreground hover:text-primary hover:bg-muted/50")
+
+    const mobileClasses =
+      "w-full text-left rounded-lg " +
+      (isActive
+        ? "text-white bg-white/10"
+        : "text-white/80 hover:bg-white/10 hover:text-white")
+
     return (
       <li role="none">
         <Link
           href={href}
           onClick={() => setMobileMenuOpen(false)}
-          className={
-            "block lg:inline-block px-4 py-2 text-sm font-medium rounded-full transition-colors duration-300 " +
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background " +
-            (isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary")
-          }
+          className={`${baseClasses} ${
+            variant === "desktop" ? desktopClasses : mobileClasses
+          }`}
           aria-current={isActive ? "page" : undefined}
           role="menuitem"
         >
@@ -72,6 +91,46 @@ export default function Navbar() {
       </li>
     )
   }
+
+  // ✨ NEW: Grouped action items into a reusable component for clarity
+  const ActionButtons = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => {
+    const primaryMobileClasses = inMobileMenu
+      ? "bg-white text-black hover:bg-white/90"
+      : ""
+
+    return (
+    <div className={`flex items-center gap-2 ${inMobileMenu ? 'flex-col w-full' : ''}`}>
+      <div className={`flex items-center gap-2 ${inMobileMenu ? 'w-full justify-center' : ''}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {mounted && (theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />)}
+        </Button>
+        <Button asChild variant="ghost" className="rounded-full text-muted-foreground">
+          <Link href="/contact">Contact</Link>
+        </Button>
+      </div>
+
+      <div className={inMobileMenu ? 'w-full' : ''}>
+        <Button
+          asChild
+          size={inMobileMenu ? "default" : "sm"}
+          className={`rounded-full shadow-lg hover:shadow-xl transition-shadow w-full ${
+            !inMobileMenu && 'h-9 px-4 text-sm'
+          } ${primaryMobileClasses}`}
+        >
+          <Link href="/career-explorer">
+              Career Explorer
+              <ArrowRight className="size-4 ml-2" />
+            </Link>
+          </Button>
+      </div>
+    </div>
+  )};
 
   return (
     <>
@@ -84,146 +143,103 @@ export default function Navbar() {
           <div className="container mx-auto px-2 md:px-4">
             <div className="flex items-center justify-between h-16 md:h-20">
             
-            {/* Logo */}
-            <Link 
-              href="/" 
-              className="flex items-center gap-2 group"
-              aria-label="Aureeture - Go to homepage"
-            >
-              <span className="relative h-12 md:h-14 w-auto">
-                <Image
-                  src="/brand/logo-dark.png"
-                  alt="AureetureAI"
-                  width={280}
-                  height={64}
-                  priority
-                  className="hidden dark:block h-full w-auto"
-                />
-                <Image
-                  src="/brand/logo-light.png"
-                  alt="AureetureAI"
-                  width={280}
-                  height={64}
-                  priority
-                  className="block dark:hidden h-full w-auto"
-                />
-              </span>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-6">
-              <ul
-                className={`flex items-center gap-2 rounded-full px-2 py-1 border 
-                ${!isScrolled && !mobileMenuOpen
-                  ? "bg-transparent border-transparent backdrop-blur-0 shadow-none"
-                  : "bg-background/60 backdrop-blur-md border-border/50"}
-                `}
-                role="menubar"
-                aria-label="Primary"
+              {/* Logo */}
+              <Link 
+                href="/" 
+                className="flex items-center gap-2 group"
+                aria-label="Aureeture - Go to homepage"
               >
-                {navItems.map((item) => <NavLink key={item.href} {...item} />)}
-              </ul>
-              
-              <div className="flex items-center gap-3">
-                 <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleTheme}
-                    className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-                  >
-                    {mounted && (theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />)}
-                  </Button>
-                  {/* Contact: smaller/lighter text-only (swapped with Continue) */}
-                  <Link href="/contact" className="inline-block">
-                    <span className="text-xs md:text-sm font-medium text-muted-foreground/70 px-2 select-none">
-                      Contact
-                    </span>
-                  </Link>
-                  {isSignedIn ? (
-                    <Link href="/dashboard" className="inline-block">
-                      <Button className="h-11 px-6 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
-                        Career Explorer
-                        <ArrowRight className="size-4 ml-2" />
-                      </Button>
-                    </Link>
-                  ) : (
-                    <SignInButton mode="modal" forceRedirectUrl="/create-profile">
-                      <Button className="h-11 px-6 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
-                        Career Explorer
-                        <ArrowRight className="size-4 ml-2" />
-                      </Button>
-                    </SignInButton>
-                  )}
-              </div>
-            </div>
+                <span className="relative h-12 md:h-14 w-auto">
+                  <Image
+                    src="/brand/logo-dark.png"
+                    alt="AureetureAI"
+                    width={280}
+                    height={64}
+                    priority
+                    className="hidden dark:block h-full w-auto"
+                  />
+                  <Image
+                    src="/brand/logo-light.png"
+                    alt="AureetureAI"
+                    width={280}
+                    height={64}
+                    priority
+                    className="block dark:hidden h-full w-auto"
+                  />
+                </span>
+              </Link>
 
-            {/* Mobile Menu Toggle */}
-            <div className="flex items-center lg:hidden">
-              <Button
+              {/* Desktop Navigation */}
+              <div className="hidden lg:flex items-center gap-4">
+                <ul
+                  className={`flex items-center gap-1 rounded-full px-2 py-1 border 
+                  ${!isScrolled && !mobileMenuOpen
+                    ? "bg-transparent border-transparent"
+                    : "bg-background/60 backdrop-blur-md border-border/50 shadow-sm"}
+                  `}
+                  role="menubar"
+                  aria-label="Primary"
+                >
+                  {navItems.map((item) => <NavLink key={item.href} {...item} variant="desktop" />)}
+                </ul>
+                
+                {/* ✨ CHANGE: Unified action group */}
+                <div className="flex items-center gap-2">
+                   <ActionButtons />
+                </div>
+              </div>
+
+              {/* Mobile Menu Toggle */}
+              <div className="flex items-center lg:hidden">
+                <Button
                   variant="ghost"
                   size="icon"
-                  onClick={toggleTheme}
-                  className="rounded-full mr-2 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                  aria-expanded={mobileMenuOpen}
+                  aria-controls="mobile-menu"
+                  className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  {mounted && (theme === "dark" ? <Sun className="size-5" /> : <Moon className="size-5" />)}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={mobileMenuOpen}
-                aria-controls="mobile-menu"
-                className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
-              </Button>
+                  {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </CurvedNavShell>
-    </nav>
+        </CurvedNavShell>
+      </nav>
 
-    <AnimatePresence>
-      {mobileMenuOpen && (
-        <motion.div
-          id="mobile-menu"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="lg:hidden fixed inset-x-0 top-20 z-[60] bg-background/95 backdrop-blur-xl border-t border-border/50 shadow-xl"
-        >
-          <div className="container px-4 pt-4 pb-6 flex flex-col gap-4 max-h-[calc(100vh-5rem)] overflow-auto">
-            <ul className="flex flex-col gap-2">
-              {navItems.map((item) => <NavLink key={item.href} {...item} />)}
-            </ul>
-            {/* Contact on mobile: smaller/lighter text-only (swapped with Continue) */}
-            <Link href="/contact" className="w-full" onClick={() => setMobileMenuOpen(false)}>
-              <div className="w-full text-center text-sm text-muted-foreground/70 py-2 select-none">
-                Contact <ArrowRight className="inline-block align-middle size-4 ml-1" />
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            key="mobile-menu-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <motion.div
+              key="mobile-menu-panel"
+              initial={{ opacity: 0, scale: 0.9, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="absolute right-4 top-20 w-full max-w-xs rounded-2xl bg-black/90 text-white shadow-xl shadow-black/40 border border-white/10 backdrop-blur-md p-4 flex flex-col gap-4 origin-top-right"
+              onClick={(e) => e.stopPropagation()}
+              id="mobile-menu"
+            >
+              <ul className="flex flex-col gap-1">
+                {navItems.map((item) => (
+                  <NavLink key={item.href} {...item} variant="mobile" />
+                ))}
+              </ul>
+              <div className="pt-3 border-t border-white/10">
+                <ActionButtons inMobileMenu={true} />
               </div>
-            </Link>
-            {isSignedIn ? (
-              <Link href="/dashboard" className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full h-12 rounded-full shadow-lg hover:shadow-xl bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10">
-                  Career Explorer
-                  <ArrowRight className="size-4 ml-2" />
-                </Button>
-              </Link>
-            ) : (
-              <SignInButton mode="modal" forceRedirectUrl="/create-profile">
-                <Button className="w-full h-12 rounded-full shadow-lg hover:shadow-xl bg-gradient-to-b from-white to-slate-50 text-slate-900 ring-1 ring-black/5 dark:ring-white/10" onClick={() => setMobileMenuOpen(false)}>
-                  Career Explorer
-                  <ArrowRight className="size-4 ml-2" />
-                </Button>
-              </SignInButton>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

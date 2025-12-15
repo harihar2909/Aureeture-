@@ -9,10 +9,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/contact",
     "/continue",
     "/velocity-cohort",
-    "/privacy-policy",
-    "/terms",
-    "/refund-cancellation",
-    "/return-policy",
+    "/policies/privacy-policy",
+    "/policies/terms",
+    "/policies/refund-cancellation",
+    "/policies/return-policy",
   ]
 
   const now = new Date()

@@ -58,10 +58,10 @@ export default function Footer() {
             <div className="mt-4">
               <h5 className="text-sm font-medium">Reserved</h5>
               <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
-                <li><Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="hover:text-primary">Terms & Conditions</Link></li>
-                <li><Link href="/refund-cancellation" className="hover:text-primary">Refund & Cancellation Policy</Link></li>
-                <li><Link href="/return-policy" className="hover:text-primary">Return Policy</Link></li>
+                <li><Link href="/policies/privacy-policy" className="hover:text-primary">Privacy Policy</Link></li>
+                <li><Link href="/policies/terms" className="hover:text-primary">Terms & Conditions</Link></li>
+                <li><Link href="/policies/refund-cancellation" className="hover:text-primary">Refund & Cancellation Policy</Link></li>
+                <li><Link href="/policies/return-policy" className="hover:text-primary">Return Policy</Link></li>
               </ul>
             </div>
           </div>

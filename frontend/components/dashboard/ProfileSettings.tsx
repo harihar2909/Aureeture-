@@ -1,35 +1,44 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Briefcase, 
-  GraduationCap, 
-  Camera, 
-  Save, 
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  GraduationCap,
+  Camera,
+  Save,
   X,
-  Upload
-} from 'lucide-react';
+  Upload,
+  Plus,
+  Star,
+  Linkedin,
+  Calendar,
+  Target,
+  Globe,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { UserProfile as ContextUserProfile } from "@/contexts/ProfileContext";
 
-// Internal modal profile extends the context shape with UI-specific fields.
+// --- Extended Type Definition ---
+// This ensures we capture all the specific fields from your dashboard requirement
 type ModalProfile = ContextUserProfile & {
   firstName: string;
   lastName: string;
   phone: string;
   skills: string[];
+  linkedIn: string;
+  careerStage: string;
+  longTermGoal: string;
+  currentRoleStartDate: string;
 };
 
 interface ProfileSettingsProps {
@@ -43,20 +52,27 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   isOpen,
   onClose,
   currentProfile,
-  onSave
+  onSave,
 }) => {
-  // Hydrate context profile into modal profile shape with sensible defaults
+  // --- Hydration Logic ---
+  // Merges current context data with the new fields
   const hydrate = (p: ContextUserProfile): ModalProfile => {
     const name = (p.name || "").trim();
     const parts = name.split(" ").filter(Boolean);
     const firstName = parts[0] || "";
     const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+    
     return {
       ...p,
       firstName,
       lastName,
+      // Map existing or use defaults for new dashboard fields
       phone: (p as any).phone ?? "",
       skills: (p as any).skills ?? [],
+      linkedIn: (p as any).linkedIn ?? "",
+      careerStage: (p as any).careerStage ?? "Professional",
+      longTermGoal: (p as any).longTermGoal ?? "",
+      currentRoleStartDate: (p as any).currentRoleStartDate ?? "",
       profilePicture: p.profilePicture ?? "",
       bio: p.bio ?? "",
       jobTitle: p.jobTitle ?? "",
@@ -69,47 +85,50 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   const [profile, setProfile] = useState<ModalProfile>(hydrate(currentProfile));
   const [isLoading, setSaving] = useState(false);
-  const [newSkill, setNewSkill] = useState('');
+  const [newSkill, setNewSkill] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Keep local state in sync when the upstream profile changes
   useEffect(() => {
-    setProfile(hydrate(currentProfile));
-  }, [currentProfile]);
+    if (isOpen) {
+      setProfile(hydrate(currentProfile));
+    }
+  }, [currentProfile, isOpen]);
 
   const handleInputChange = (field: keyof ModalProfile, value: string) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleAddSkill = () => {
     if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
-      setProfile(prev => ({
+      setProfile((prev) => ({
         ...prev,
-        skills: [...prev.skills, newSkill.trim()]
+        skills: [...prev.skills, newSkill.trim()],
       }));
-      setNewSkill('');
+      setNewSkill("");
     }
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
+      skills: prev.skills.filter((skill) => skill !== skillToRemove),
     }));
   };
 
-  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setProfile(prev => ({
+        setProfile((prev) => ({
           ...prev,
-          profilePicture: result
+          profilePicture: result,
         }));
       };
       reader.readAsDataURL(file);
@@ -118,18 +137,30 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // Map back to the context profile shape for persistence
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    // Combine fields back into the main profile object
+    // Note: We cast to any to allow saving the extra fields back to context
     const merged: ContextUserProfile = {
-      name: [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim() || profile.name || '',
-      email: profile.email || '',
-      profilePicture: profile.profilePicture || '',
-      bio: profile.bio || '',
-      jobTitle: profile.jobTitle || '',
-      company: profile.company || '',
-      education: profile.education || '',
-      location: profile.location || '',
+      name:
+        [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() ||
+        profile.name ||
+        "",
+      email: profile.email || "",
+      profilePicture: profile.profilePicture || "",
+      bio: profile.bio || "",
+      jobTitle: profile.jobTitle || "",
+      company: profile.company || "",
+      education: profile.education || "",
+      location: profile.location || "",
+      // @ts-ignore - Custom fields persistence
+      phone: profile.phone,
+      skills: profile.skills,
+      linkedIn: profile.linkedIn,
+      careerStage: profile.careerStage,
+      longTermGoal: profile.longTermGoal,
+      currentRoleStartDate: profile.currentRoleStartDate,
     };
     onSave(merged);
     setSaving(false);
@@ -137,7 +168,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newSkill.trim()) {
+    if (e.key === "Enter" && newSkill.trim()) {
       e.preventDefault();
       handleAddSkill();
     }
@@ -146,72 +177,75 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   if (!isOpen) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Profile Settings
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
-              Update your personal information and preferences
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-        </div>
+            className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+          />
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
-          <div className="p-6 space-y-8">
-            
-            {/* Profile Picture Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Profile Picture
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-6">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={profile.profilePicture || ''} alt="Profile" />
-                    <AvatarFallback className="text-2xl">
-                      {(profile.firstName?.[0] || profile.name?.[0] || 'U').toUpperCase()}{(profile.lastName?.[0] || '')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
+          {/* Modal Content */}
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl flex flex-col overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Complete Your Profile
+                </h2>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                  This information will be displayed on your dashboard and matched with jobs.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-9 w-9 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-full"
+              >
+                <X size={20} />
+              </Button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-10 scrollbar-hide">
+              
+              {/* --- SECTION 1: IDENTITY & PHOTO --- */}
+              <div className="flex flex-col sm:flex-row gap-8 items-start">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative group">
+                    <Avatar className="h-28 w-28 border-4 border-white dark:border-zinc-900 shadow-md ring-1 ring-zinc-200 dark:ring-zinc-800">
+                      <AvatarImage src={profile.profilePicture || ""} className="object-cover"/>
+                      <AvatarFallback className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-3xl font-bold">
+                        {(profile.firstName?.[0] || profile.name?.[0] || "U").toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center cursor-pointer"
                       onClick={() => fileInputRef.current?.click()}
-                      className="gap-2"
                     >
-                      <Upload className="w-4 h-4" />
-                      Upload New Picture
-                    </Button>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      JPG, PNG or GIF. Max size 5MB.
-                    </p>
+                      <Camera className="text-white w-8 h-8" />
+                    </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 border-zinc-200 dark:border-zinc-800 rounded-full"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-3 h-3 mr-2" />
+                    Upload Photo
+                  </Button>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -220,199 +254,257 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                     className="hidden"
                   />
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Personal Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Personal Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={profile.firstName || ''}
-                      onChange={(e) => handleInputChange('firstName', e.target.value)}
-                      placeholder="Enter your first name"
-                    />
+                <div className="flex-1 w-full space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={profile.firstName}
+                        onChange={(e) => handleInputChange("firstName", e.target.value)}
+                        className="bg-zinc-50 dark:bg-zinc-900/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profile.lastName}
+                        onChange={(e) => handleInputChange("lastName", e.target.value)}
+                        className="bg-zinc-50 dark:bg-zinc-900/50"
+                      />
+                    </div>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={profile.lastName || ''}
-                      onChange={(e) => handleInputChange('lastName', e.target.value)}
-                      placeholder="Enter your last name"
+                    <Label htmlFor="careerStage" className="flex items-center gap-2">
+                      <Globe size={14} className="text-zinc-500" /> Career Stage
+                    </Label>
+                    <select
+                      id="careerStage"
+                      value={profile.careerStage}
+                      onChange={(e) => handleInputChange("careerStage", e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:ring-offset-zinc-950 dark:placeholder:text-zinc-400 dark:focus-visible:ring-zinc-300"
+                    >
+                      <option value="Student">Student / Fresher</option>
+                      <option value="Professional">Working Professional</option>
+                      <option value="Freelancer">Freelancer</option>
+                      <option value="Job Seeker">Job Seeker</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="longTermGoal" className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Target size={14} /> Long-term Goal
+                    </Label>
+                    <Textarea
+                      id="longTermGoal"
+                      rows={2}
+                      value={profile.longTermGoal}
+                      onChange={(e) => handleInputChange("longTermGoal", e.target.value)}
+                      placeholder="e.g. Become a lead animator at a top studio..."
+                      className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30 focus-visible:ring-emerald-500 resize-none"
                     />
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              </div>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 w-full" />
+
+              {/* --- SECTION 2: PROFESSIONAL & EDUCATION --- */}
+              <div className="space-y-5">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 uppercase tracking-wide">
+                  <Briefcase size={16} className="text-zinc-500" /> Current Role & Education
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="jobTitle">Job Title / Role</Label>
+                    <Input
+                      id="jobTitle"
+                      value={profile.jobTitle}
+                      onChange={(e) => handleInputChange("jobTitle", e.target.value)}
+                      placeholder="e.g. Animator"
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="company">Company / Organization</Label>
+                    <Input
+                      id="company"
+                      value={profile.company}
+                      onChange={(e) => handleInputChange("company", e.target.value)}
+                      placeholder="e.g. Disney"
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentRoleStartDate" className="flex items-center gap-2">
+                      <Calendar size={14} className="text-zinc-500"/> Start Date
+                    </Label>
+                    <Input
+                      id="currentRoleStartDate"
+                      type="month"
+                      value={profile.currentRoleStartDate}
+                      onChange={(e) => handleInputChange("currentRoleStartDate", e.target.value)}
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="education" className="flex items-center gap-2">
+                      <GraduationCap size={14} className="text-zinc-500" /> Latest Education
+                    </Label>
+                    <Input
+                      id="education"
+                      value={profile.education}
+                      onChange={(e) => handleInputChange("education", e.target.value)}
+                      placeholder="e.g. IIT Data Science (2021-2025)"
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 w-full" />
+
+              {/* --- SECTION 3: CONTACT DETAILS --- */}
+              <div className="space-y-5">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 uppercase tracking-wide">
+                  <User size={16} className="text-zinc-500" /> Contact Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      Email
+                      <Mail size={14} /> Email
                     </Label>
                     <Input
                       id="email"
                       type="email"
-                      value={profile.email || ''}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="Enter your email"
+                      value={profile.email}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      Phone
+                      <Phone size={14} /> Phone
                     </Label>
                     <Input
                       id="phone"
-                      value={profile.phone || ''}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="Enter your phone number"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    Location
-                  </Label>
-                  <Input
-                    id="location"
-                    value={profile.location || ''}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    placeholder="Enter your location"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={profile.bio || ''}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
-                    placeholder="Tell us about yourself..."
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Professional Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  Professional Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="jobTitle">Job Title</Label>
-                    <Input
-                      id="jobTitle"
-                      value={profile.jobTitle || ''}
-                      onChange={(e) => handleInputChange('jobTitle', e.target.value)}
-                      placeholder="Enter your job title"
+                      value={profile.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="company">Company</Label>
+                    <Label htmlFor="location" className="flex items-center gap-2">
+                      <MapPin size={14} /> Location
+                    </Label>
                     <Input
-                      id="company"
-                      value={profile.company || ''}
-                      onChange={(e) => handleInputChange('company', e.target.value)}
-                      placeholder="Enter your company"
+                      id="location"
+                      value={profile.location}
+                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      placeholder="Mumbai, India"
+                      className="bg-zinc-50 dark:bg-zinc-900/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedIn" className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                      <Linkedin size={14} /> LinkedIn Profile
+                    </Label>
+                    <Input
+                      id="linkedIn"
+                      value={profile.linkedIn}
+                      onChange={(e) => handleInputChange("linkedIn", e.target.value)}
+                      placeholder="linkedin.com/in/username"
+                      className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 focus-visible:ring-blue-500"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="education" className="flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4" />
-                    Education
-                  </Label>
-                  <Input
-                    id="education"
-                    value={profile.education || ''}
-                    onChange={(e) => handleInputChange('education', e.target.value)}
-                    placeholder="Enter your education background"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 w-full" />
 
-            {/* Skills Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Skills</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
+              {/* --- SECTION 4: SKILLS --- */}
+              <div className="space-y-5">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 uppercase tracking-wide">
+                  <Star size={16} className="text-zinc-500" /> Skills & Expertise
+                </h3>
+                <div className="flex gap-3">
                   <Input
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Add a skill..."
-                    className="flex-1"
+                    placeholder="Add a skill (e.g. Maya, Blender, After Effects)..."
+                    className="flex-1 bg-zinc-50 dark:bg-zinc-900/50"
                   />
-                  <Button onClick={handleAddSkill} disabled={!newSkill.trim()}>
-                    Add
+                  <Button
+                    onClick={handleAddSkill}
+                    disabled={!newSkill.trim()}
+                    className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                  >
+                    <Plus size={16} className="mr-2" /> Add
                   </Button>
                 </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {profile.skills.map((skill, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="gap-2 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20"
-                      onClick={() => handleRemoveSkill(skill)}
-                    >
-                      {skill}
-                      <X className="w-3 h-3" />
-                    </Badge>
-                  ))}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {profile.skills.length > 0 ? (
+                    profile.skills.map((skill, index) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="pl-3 pr-2 py-1 gap-2 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-normal hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 hover:border-red-200 dark:hover:border-red-900 transition-colors cursor-pointer group"
+                        onClick={() => handleRemoveSkill(skill)}
+                      >
+                        {skill}
+                        <X size={12} className="opacity-50 group-hover:opacity-100" />
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-sm text-zinc-400 italic">
+                      Add key skills like '3D Animation', 'Maya', etc.
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={isLoading}
-            className="gap-2"
-          >
-            {isLoading ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-              />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {isLoading ? 'Saving...' : 'Save Changes'}
-          </Button>
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isLoading}
+                className="border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Skip for Now
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 min-w-[140px]"
+              >
+                {isLoading ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="w-4 h-4 border-2 border-zinc-400 border-t-zinc-100 rounded-full"
+                  />
+                ) : (
+                  <>
+                    <Save size={16} className="mr-2" /> Save & Proceed
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
-    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

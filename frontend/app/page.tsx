@@ -30,6 +30,14 @@ import { LeadModal } from "@/components/ui/lead-modal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+// New Landing Page Sections
+import {
+  CandidateJourneyFlow,
+  RecruiterIntelligenceGrid,
+  AIEngineSpecs,
+  TrustAndTransparency,
+} from "@/components/landing-page-sections";
+
 //================================================================//
 //  TYPE DEFINITIONS
 //================================================================//
@@ -180,10 +188,10 @@ const LeftHeroContent = ({ onOpenLead }: { onOpenLead: () => void }) => (
       
       <motion.h1
         variants={FADE_IN_UP}
-        className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight"
+        className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold text-foreground leading-tight max-w-2xl"
       >
         Discover the joy of career building with the
-        <span className="block text-primary mt-2">
+        <span className="block mt-2 text-foreground/80">
         world's first AI-powered career + ecosystem.
         </span>
       </motion.h1>
@@ -397,7 +405,7 @@ const FeatureCard = ({ feature, index, isHovered, onHover, onLeave }: FeatureCar
       whileHover={!prefersReducedMotion ? CARD_HOVER.hover : {}}
       onHoverStart={() => onHover(index)}
       onHoverEnd={onLeave}
-      className="group relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-800/50 rounded-3xl p-8 text-left transition-all duration-500 hover:border-gray-300/50 dark:hover:border-gray-700/50 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/20 overflow-hidden"
+      className="group relative bg-card backdrop-blur-sm border border-border rounded-3xl p-8 text-left transition-all duration-500 hover:border-primary/40 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/20 overflow-hidden"
       role="article"
       tabIndex={0}
       aria-labelledby={`feature-title-${index}`}
@@ -408,27 +416,27 @@ const FeatureCard = ({ feature, index, isHovered, onHover, onLeave }: FeatureCar
       
       {/* Icon with enhanced styling */}
       <div className="relative mb-6">
-        <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${feature.color} shadow-lg`}>
+        <div className={`inline-flex p-4 rounded-2xl bg-primary/10 shadow-lg`}>
           <feature.icon 
             className="size-8 text-white" 
             aria-hidden="true"
           />
         </div>
         {/* Subtle glow effect */}
-        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.color} blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500`} />
+        <div className="absolute inset-0 rounded-2xl bg-primary/5 blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
       </div>
 
       <div className="relative z-10">
         <h3 
           id={`feature-title-${index}`}
-          className="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-gray-800 dark:group-hover:text-gray-100 transition-colors duration-300"
+          className="text-2xl font-bold text-foreground mb-4 group-hover:text-foreground transition-colors duration-300"
         >
           {feature.title}
         </h3>
         
         <p 
           id={`feature-description-${index}`}
-          className="text-gray-600 dark:text-gray-300 leading-relaxed mb-6 text-lg"
+          className="text-muted-foreground leading-relaxed mb-6 text-lg"
         >
           {feature.description}
         </p>
@@ -449,7 +457,7 @@ const FeatureCard = ({ feature, index, isHovered, onHover, onLeave }: FeatureCar
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: benefitIndex * 0.1 + 0.2 }}
-              className="flex items-center text-sm text-gray-500 dark:text-gray-400"
+              className="flex items-center text-sm text-muted-foreground"
             >
               <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${feature.color} mr-3 flex-shrink-0`} />
               {benefit}
@@ -458,7 +466,7 @@ const FeatureCard = ({ feature, index, isHovered, onHover, onLeave }: FeatureCar
         </motion.ul>
 
         {/* Subtle call-to-action */}
-        <div className="flex items-center text-sm font-medium text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors duration-300">
+        <div className="flex items-center text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">
           <span>Learn more</span>
           <ArrowRight className="ml-2 size-4 transform group-hover:translate-x-1 transition-transform duration-300" />
         </div>
@@ -930,32 +938,44 @@ const FAQPreviewSection = () => (
 );
 
 const FinalCTASection = () => (
-    <section className="py-24 px-4 relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-slate-900">
-            <Image src="/tempImageC8u1Nc 1.png" alt="Abstract network pattern" fill sizes="100vw" className="object-cover opacity-10" />
+    <section className="py-20 px-4 relative overflow-hidden bg-background">
+        <div className="absolute inset-0 -z-10 pointer-events-none">
+            <Image
+              src="/tempImageC8u1Nc 1.png"
+              alt="Abstract network pattern"
+              fill
+              sizes="100vw"
+              className="object-cover opacity-5"
+            />
         </div>
-        <div className="container mx-auto max-w-4xl text-center">
+        <div className="container mx-auto max-w-4xl text-center relative z-10">
             <motion.div
                 variants={FADE_IN_UP}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.3 }}
             >
-                <h2 className="text-4xl md:text-6xl font-bold font-heading bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent mb-6">
+                <h2 className="text-4xl md:text-5xl font-bold font-heading text-foreground mb-6">
                     We Are Not Just a Marketplace
                 </h2>
-                <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-8">
+                <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
                     We are an ecosystem where students grow, prove, and launch their careers, while enterprises gain verified, reliable, and future-ready talent.
                 </p>
-                <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-8 mb-12">
+                <div className="bg-card border border-border rounded-2xl p-8 mb-12 text-left">
                     <div className="grid md:grid-cols-2 gap-8 text-left">
                         <div>
-                            <h3 className="text-2xl font-bold text-white mb-4">For Students</h3>
-                            <p className="text-slate-300">A structured path from zero experience to being a top-tier, employable professional with verified skills and proven track record.</p>
+                            <h3 className="text-2xl font-bold text-foreground mb-4">For Students</h3>
+                            <p className="text-muted-foreground">
+                              A structured path from zero experience to being a top-tier, employable professional with verified
+                              skills and proven track record.
+                            </p>
                         </div>
                         <div>
-                            <h3 className="text-2xl font-bold text-white mb-4">For Enterprises</h3>
-                            <p className="text-slate-300">A curated, de-risked pipeline to the top 5% of student talent, reducing recruitment costs and ensuring quality hires.</p>
+                            <h3 className="text-2xl font-bold text-foreground mb-4">For Enterprises</h3>
+                            <p className="text-muted-foreground">
+                              A curated, de-risked pipeline to the top 5% of student talent, reducing recruitment costs and
+                              ensuring quality hires.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -981,6 +1001,26 @@ export default function AureeturePlatformPage() {
     return (
         <main className="min-h-screen bg-background text-foreground antialiased">
             <HeroSection onOpenLead={() => setLeadOpen(true)} />
+            
+            {/* ============================================== */}
+            {/* NEW FEATURE-RICH SECTIONS - AI Workflow Explainers */}
+            {/* ============================================== */}
+            
+            {/* Section 1: Student/Candidate Workflow - Interactive Stepper */}
+            <CandidateJourneyFlow />
+            
+            {/* Section 2: Employer Command Center - Bento Grid */}
+            <RecruiterIntelligenceGrid />
+            
+            {/* Section 3: Technology Core - Horizontal Cards */}
+            <AIEngineSpecs />
+            
+            {/* Section 4: Trust & Transparency - Pros + FAQ */}
+            <TrustAndTransparency />
+            
+            {/* ============================================== */}
+            {/* EXISTING SECTIONS */}
+            {/* ============================================== */}
             <StudentJourneySection />
             <StudentFeaturesSection />
             <EnterpriseJourneySection />
@@ -990,7 +1030,7 @@ export default function AureeturePlatformPage() {
               open={leadOpen}
               onClose={() => setLeadOpen(false)}
               title="Start Your Journey"
-              description="Share your details and we’ll reach out with next steps."
+              description="Share your details and we'll reach out with next steps."
             />
         </main>
     );

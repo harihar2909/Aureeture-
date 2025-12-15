@@ -1,213 +1,234 @@
-// src/components/dashboard/ResponsiveSidebar.tsx
 "use client";
 
-import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Settings, Menu, Bot, Bell, ChevronsLeft, UserCircle } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { useMediaQuery } from '@/hooks/use-mobile'; // Assuming a custom hook
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils'; // Assuming a cn utility
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  User,
+  Users,
+  Route,
+  Rocket,
+  Briefcase,
+  Gift,
+  Wallet,
+  Bot,
+  Calendar,
+  Settings,
+  LogOut,
+  ChevronDown,
+  Bell,
+  Star,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useProfile } from "@/contexts/ProfileContext";
+import ProfileSettings from "@/components/dashboard/ProfileSettings";
+import { useNotificationModal } from "@/contexts/NotificationContext";
 
-// --- TYPES ---
-export interface Module {
-  id: string;
-  name: string;
+// --- Types ---
+type Role = "student" | "mentor" | "founder";
+
+type NavItem = {
+  label: string;
+  href: string;
   icon: React.ComponentType<{ className?: string }>;
-}
-
-interface ResponsiveSidebarProps {
-  modules: Module[];
-  activeModule: string;
-  onModuleChange: (moduleId: string) => void;
-  onLogout: () => void;
-  onSettingsClick: () => void;
-  onNotificationsClick: () => void;
-  userEmail: string;
-}
-
-// --- NEW: CONTEXT FOR STATE MANAGEMENT ---
-interface SidebarContextType {
-  isCollapsed: boolean;
-  toggleCollapse: () => void;
-}
-
-const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
-const useSidebar = () => {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
-  return context;
+  badge?: string; // Optional badge for notifications/status
+  badgeColor?: string; // Optional custom color for the badge
 };
 
-// --- MAIN COMPONENT ---
-const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = (props) => {
+// --- Configuration ---
+// Centrally managing navigation items makes it easier to update later
+const NAV_CONFIG: Record<Role, NavItem[]> = {
+  student: [
+    { label: "Profile", href: "/dashboard/student/profile", icon: User },
+    { label: "Mentors", href: "/dashboard/student/mentors", icon: Users },
+    { label: "Path Finder", href: "/dashboard/student/pathfinder", icon: Route },
+    {
+      label: "Real-time Projects",
+      href: "/dashboard/student/real-time-projects",
+      icon: Rocket,
+      badge: "New",
+      badgeColor: "bg-emerald-500",
+    },
+    { label: "Explore Opportunities", href: "/dashboard/student/job-finder", icon: Briefcase },
+    { label: "Referrals", href: "/dashboard/student/referrals", icon: Gift },
+    { label: "Earnings", href: "/dashboard/student/earnings", icon: Wallet },
+  ],
+  mentor: [
+    { label: "Overview", href: "/dashboard/mentor/overview", icon: LayoutDashboard },
+    { label: "Sessions", href: "/dashboard/mentor/sessions", icon: Calendar },
+    { label: "Mentees", href: "/dashboard/mentor/mentees", icon: Users },
+    { label: "Earnings", href: "/dashboard/mentor/earnings", icon: Wallet },
+  ],
+  founder: [
+    { label: "Overview", href: "/dashboard/founder/overview", icon: LayoutDashboard },
+    { label: "Talent Pool", href: "/dashboard/founder/talent-pool", icon: Users },
+    { label: "Post Job", href: "/dashboard/founder/post-job", icon: Briefcase },
+  ],
+};
+
+// --- Helper Hook ---
+// In a real app, you might get this from your Auth Context or Session
+function useCurrentRole(pathname: string): Role {
+  if (pathname.startsWith("/dashboard/mentor")) return "mentor";
+  if (pathname.startsWith("/dashboard/founder")) return "founder";
+  return "student";
+}
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const role = useCurrentRole(pathname || "");
   const router = useRouter();
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const mobileToggleRef = useRef<HTMLButtonElement>(null);
+  const { profile, setProfile } = useProfile();
+  const [isProfileSettingsOpen, setProfileSettingsOpen] = useState(false);
+  const { open: openNotifications } = useNotificationModal();
 
-  const handleModuleClick = (moduleId: string) => {
-    props.onModuleChange(moduleId);
-    if (isMobile) setMobileMenuOpen(false);
-  };
-
-  const handleLogoClick = () => router.push('/');
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isMobileMenuOpen) {
-        setMobileMenuOpen(false);
-        mobileToggleRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileMenuOpen]);
-  
-  // REFACTORED: Wrap providers around the content
-  return (
-    <SidebarContext.Provider value={{ isCollapsed, toggleCollapse: () => setIsCollapsed(!isCollapsed) }}>
-      <TooltipProvider delayDuration={0}>
-        {/* --- MOBILE HEADER & OVERLAY --- */}
-        <header className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-lg">
-          <button onClick={handleLogoClick} className="flex items-center gap-3 hover:opacity-80 transition-opacity" aria-label="Go to homepage">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary-foreground" />
-            </div>
-            {/* Consistent branding */}
-            <span className="text-lg font-bold">Aureeture</span>
-          </button>
-          <Button ref={mobileToggleRef} variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)} aria-label="Open navigation menu">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </header>
-
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/60" onClick={() => setMobileMenuOpen(false)} />
-              <motion.aside initial={{ x: '-100%' }} animate={{ x: '0%' }} exit={{ x: '-100%' }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="fixed inset-y-0 left-0 z-50 flex h-full w-72 flex-col border-r bg-background">
-                <SidebarContent {...props} onModuleChange={handleModuleClick} onLogoClick={handleLogoClick} />
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* --- DESKTOP "FLOATING WIDGET" SIDEBAR --- */}
-        <aside
-          className={cn(
-            "hidden md:flex flex-col fixed left-4 top-4 h-[calc(100vh-2rem)]",
-            "bg-card/60 dark:bg-neutral-900/60 backdrop-blur-xl",
-            "border border-border/20 dark:border-white/10 rounded-2xl",
-            "shadow-lg dark:shadow-2xl dark:shadow-black/20",
-            "transition-all duration-300 ease-in-out",
-            isCollapsed ? 'w-[72px]' : 'w-72'
-          )}
-        >
-          <SidebarContent {...props} onModuleChange={handleModuleClick} onLogoClick={handleLogoClick} />
-        </aside>
-      </TooltipProvider>
-    </SidebarContext.Provider>
-  );
-};
-
-// --- SHARED SIDEBAR CONTENT (REFACTORED) ---
-const SidebarContent: React.FC<Omit<ResponsiveSidebarProps, 'userEmail'> & { onLogoClick: () => void, userEmail: string }> = (props) => {
-  const { isCollapsed, toggleCollapse } = useSidebar();
-  const { modules, activeModule, onModuleChange, onLogoClick, userEmail } = props;
+  // Memoize nav items to avoid re-calculating on every render
+  const navItems = useMemo(() => NAV_CONFIG[role], [role]);
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Logo/Brand */}
-      <button onClick={onLogoClick} className={cn("flex items-center gap-4 border-b p-4 transition-colors hover:bg-primary/5 h-[73px]", isCollapsed && 'justify-center')} aria-label="Go to homepage">
-        <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Bot className="w-6 h-6 text-primary-foreground" />
-        </div>
-        <AnimatePresence>
-          {!isCollapsed && (
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-              <h2 className="text-xl font-bold tracking-tight">Aureeture</h2>
-              <p className="text-sm text-muted-foreground">Dashboard</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </button>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-2" aria-label="Main navigation">
-        {modules.map((module) => <NavItem key={module.id} module={module} isActive={activeModule === module.id} onClick={() => onModuleChange(module.id)} />)}
-      </nav>
-
-      {/* Footer */}
-      <div className="mt-auto border-t p-3 space-y-1">
-        <FooterButton isCollapsed={isCollapsed} icon={Settings} tooltip="Settings" onClick={props.onSettingsClick} />
-        <FooterButton isCollapsed={isCollapsed} icon={Bell} tooltip="Notifications" onClick={props.onNotificationsClick} />
-        
-        {/* NEW: User Info Section */}
-        <div className="border-t pt-2 mt-2">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="ghost" className={cn("w-full h-12 gap-3", isCollapsed ? 'justify-center px-0' : 'justify-start px-3')}>
-                        <UserCircle className="h-6 w-6 flex-shrink-0 text-muted-foreground" />
-                        <AnimatePresence>
-                            {!isCollapsed && (
-                                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm font-medium text-muted-foreground truncate text-left">
-                                    {userEmail}
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </Button>
-                </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right"><p>{userEmail}</p></TooltipContent>}
-            </Tooltip>
-        </div>
-
-        {/* NEW: Improved Collapse Toggle */}
-        <Button variant="ghost" className="w-full justify-center text-muted-foreground" onClick={toggleCollapse}>
-          <ChevronsLeft className={cn("h-5 w-5 transition-transform duration-300", isCollapsed && "rotate-180")} />
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-// --- CHILD COMPONENTS ---
-const NavItem: React.FC<{ module: Module, isActive: boolean, onClick: () => void }> = ({ module, isActive, onClick }) => {
-  const { isCollapsed } = useSidebar();
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.button onClick={onClick} className={cn("w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left relative", isActive ? 'text-primary' : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground')}>
-          {isActive && <motion.div className="absolute inset-0 bg-primary/10 rounded-lg z-0" layoutId="activeHighlight" transition={{ type: "spring", stiffness: 300, damping: 30 }} />}
-          <div className={cn("relative z-10 flex items-center gap-3", isCollapsed && 'justify-center w-full')}>
-            <module.icon className="w-5 h-5 flex-shrink-0" />
-            <AnimatePresence>
-              {!isCollapsed && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="font-medium text-sm whitespace-nowrap">{module.name}</motion.span>}
-            </AnimatePresence>
+    <>
+    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:flex">
+      
+      {/* 1. Brand Header */}
+      <div className="flex h-16 items-center px-6 border-b border-zinc-200 dark:border-zinc-800">
+        <Link href="/" className="flex items-center gap-2 font-bold tracking-tight transition-opacity hover:opacity-90">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900 shadow-sm">
+            <Bot className="h-5 w-5" />
           </div>
-        </motion.button>
-      </TooltipTrigger>
-      {isCollapsed && <TooltipContent side="right"><p>{module.name}</p></TooltipContent>}
-    </Tooltip>
+          <div className="flex flex-col leading-none">
+            <span className="text-lg">Aureeture</span>
+            <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+              {role} Workspace
+            </span>
+          </div>
+        </Link>
+      </div>
+
+      {/* 2. Main Navigation (Scrollable) */}
+      <div className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="space-y-1">
+          {navItems.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50 shadow-sm"
+                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-zinc-50"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon 
+                    className={cn(
+                      "h-4 w-4 transition-colors", 
+                      isActive ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
+                    )} 
+                  />
+                  <span>{item.label}</span>
+                </div>
+                
+                {/* Notification Badge */}
+                {item.badge && (
+                  <span className={cn(
+                    "ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium text-white shadow-sm",
+                    item.badgeColor || "bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900"
+                  )}>
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* 3. User Footer (Sticky Bottom) */}
+      <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex w-full items-center gap-3 rounded-lg border border-transparent p-2 text-left transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400">
+              <Avatar className="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
+                <AvatarImage src={profile.profilePicture || ""} alt={profile.name || profile.email} />
+                <AvatarFallback>
+                  {(profile.name?.charAt(0) || profile.email?.charAt(0) || "U").toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  {profile.name || "Innovator"}
+                </p>
+                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {profile.email}
+                </p>
+              </div>
+              <ChevronDown className="h-4 w-4 text-zinc-400" />
+            </button>
+          </DropdownMenuTrigger>
+          
+            <DropdownMenuContent align="end" className="w-56" side="right" sideOffset={10}>
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                router.push(`/dashboard/${role}/profile`);
+              }}
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                // Navigate to role-based settings page
+                router.push(`/dashboard/${role}/settings`);
+              }}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                openNotifications();
+              }}
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              <span>Notifications</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-950/20 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </aside>
+    <ProfileSettings
+      isOpen={isProfileSettingsOpen}
+      onClose={() => setProfileSettingsOpen(false)}
+      currentProfile={profile}
+      onSave={setProfile}
+    />
+    </>
   );
-};
-
-const FooterButton: React.FC<{ isCollapsed: boolean, icon: React.FC<any>, tooltip: string, onClick?: () => void }> = ({ isCollapsed, icon: Icon, tooltip, onClick }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button variant="ghost" size={isCollapsed ? "icon" : "sm"} className="text-muted-foreground hover:text-foreground w-full" onClick={onClick}>
-        <Icon className="h-5 w-5" />
-        <AnimatePresence>
-          {!isCollapsed && <span className="ml-2 font-medium text-sm">{tooltip}</span>}
-        </AnimatePresence>
-      </Button>
-    </TooltipTrigger>
-    {isCollapsed && <TooltipContent side="right"><p>{tooltip}</p></TooltipContent>}
-  </Tooltip>
-);
-
-export default ResponsiveSidebar;
+}

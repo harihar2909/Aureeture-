@@ -1,5 +1,4 @@
 "use client";
-
 import React, { FC, ReactNode, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CurvedButton } from '@/components/ui/curved-button';
@@ -7,19 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    Play, Users, Building2, GraduationCap, Briefcase, Target, Zap, Shield, ArrowRight,
-    Award, Lightbulb, Globe, X
+    Users, Building2, GraduationCap, Briefcase, Target, Zap, Shield, ArrowRight,
+    Award, Lightbulb, Globe, X, CheckCircle2, XCircle
 } from 'lucide-react';
 
 // --- Motion Variants (aligned with Velocity page) ---
 const FADE_IN_UP = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
 const STAGGER_CONTAINER = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.08 } },
 };
 
 // --- Reusable Components ---
@@ -134,25 +133,84 @@ const TalentMatchPage: React.FC = () => {
                         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto">
                             Aureeture is the ecosystem where ambitious students meet innovative companies to solve real-world challenges.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <CurvedButton
-                              gradient
-                              onClick={() => document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' })}
-                              className="w-full sm:w-auto"
-                            >
-                              Start Your Journey
+                        
+                        {/* Additional CTA Buttons as requested */}
+                        <div className="mt-4 flex flex-col sm:flex-row gap-4 justify-center">
+                            <CurvedButton gradient className="w-full sm:w-auto">
+                              Join as a Founder/Recruiter
                             </CurvedButton>
-                            <CurvedButton
-                              variant="outline"
-                              arrow={false}
-                              leftIcon={<Play className="w-5 h-5" />}
-                              onClick={() => setIsVideoModalOpen(true)}
-                              className="backdrop-blur-sm w-full sm:w-auto"
-                            >
-                              Watch Demo
+                            <CurvedButton variant="outline" className="backdrop-blur-sm w-full sm:w-auto">
+                              Join as a Student <ArrowRight className="w-4 h-4 ml-2" />
                             </CurvedButton>
                         </div>
                     </motion.div>
+                </section>
+                
+                {/* --- The Aureeture Difference Section --- */}
+                <section id="difference" className="section bg-card/30 dark:bg-neutral-900/30 scroll-mt-28">
+                    <div className="section-container">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.3 }}
+                            transition={{ duration: 0.6 }}
+                            className="text-center mb-12"
+                        >
+                            <h2 className="text-3xl md:text-4xl font-bold">The Aureeture Difference</h2>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                            <motion.div variants={FADE_IN_UP} whileInView="visible" initial="hidden" viewport={{ once: true, amount: 0.3 }} className="bg-card/50 dark:bg-neutral-900/50 p-6 rounded-2xl border border-border/10">
+                                <h3 className="text-xl font-bold mb-4 text-center">Other Platforms</h3>
+                                <ul className="space-y-3">
+                                    <li className="flex items-start text-muted-foreground">
+                                        <XCircle className="w-5 h-5 text-red-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Endless low-paying gigs</span>
+                                    </li>
+                                    <li className="flex items-start text-muted-foreground">
+                                        <XCircle className="w-5 h-5 text-red-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Resumes that reveal nothing</span>
+                                    </li>
+                                    <li className="flex items-start text-muted-foreground">
+                                        <XCircle className="w-5 h-5 text-red-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Simple keyword-based matches</span>
+                                    </li>
+                                    <li className="flex items-start text-muted-foreground">
+                                        <XCircle className="w-5 h-5 text-red-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Mediocre and unreliable results</span>
+                                    </li>
+                                    <li className="flex items-start text-muted-foreground">
+                                        <XCircle className="w-5 h-5 text-red-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Time wasted on poor candidates</span>
+                                    </li>
+                                </ul>
+                            </motion.div>
+                            <motion.div variants={FADE_IN_UP} whileInView="visible" initial="hidden" viewport={{ once: true, amount: 0.3 }} className="bg-primary/10 p-6 rounded-2xl border border-primary/20">
+                                <h3 className="text-xl font-bold mb-4 text-center text-primary">Aureeture</h3>
+                                <ul className="space-y-3">
+                                    <li className="flex items-start">
+                                        <CheckCircle2 className="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>AI reads real profiles from GitHub & LeetCode</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <CheckCircle2 className="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Deep skill-based matching</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <CheckCircle2 className="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Fair pay ($15/hr+) minimum</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <CheckCircle2 className="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>Minimum $20K+ full-time roles</span>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <CheckCircle2 className="w-5 h-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                                        <span>No bad fits, only quality matches</span>
+                                    </li>
+                                </ul>
+                            </motion.div>
+                        </div>
+                    </div>
                 </section>
                 
                 {/* --- Platform Tabs Section --- */}

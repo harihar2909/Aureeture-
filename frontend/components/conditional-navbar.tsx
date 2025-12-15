@@ -7,8 +7,8 @@ import EnterpriseNavbar from "@/components/enterprise-navbar";
 export default function ConditionalNavbar() {
   const pathname = usePathname();
   
-  // Hide navbar on dashboard pages
-  if (pathname?.startsWith('/dashboard')) {
+  // Hide navbar on internal dashboard-style pages
+  if (pathname?.startsWith("/dashboard")) {
     return null;
   }
 

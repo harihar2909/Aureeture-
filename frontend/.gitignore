@@ -1,32 +1,100 @@
-# ## Security: Ignore environment files for BOTH frontend and backend ##
-# These contain secret keys and must NOT be on GitHub.
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# ============================================
+# Frontend - Next.js/React/TypeScript
+# ============================================
 
-# ## Dependencies: Ignore for BOTH frontend and backend ##
-# These folders are huge and can be re-installed with 'npm install'.
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
 
-# ## Frontend (Next.js / React) ##
-# Ignore the build output and Vercel-specific files.
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Next.js
 .next/
 out/
-.vercel/
+.vercel
+.vercel.json
+.vercelignore
+.swc/
 
-# ## Backend (Node.js / Express) ##
-# Ignore compiled TypeScript/JavaScript folders and logs.
-dist/
+# Production
 build/
+dist/
+
+# Environment Variables
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+*.env
+!.env.example
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# ## Operating System Files ##
-# Ignore system-specific files.
+# Local Development
+.local/
+.localhost/
+.local-*
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+*.pem
 Thumbs.db
-# clerk configuration (can include secrets)
-/.clerk/
+Desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Turbo
+.turbo/
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+.temp/
+tmp/
+
+# Package Manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-store/
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+.npm
+.eslintcache
+.stylelintcache
+.parcel-cache/

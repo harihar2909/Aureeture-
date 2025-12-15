@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +23,7 @@ const EnterpriseNavbar = () => {
     const [activeSection, setActiveSection] = useState("overview");
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const menuRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -66,6 +67,18 @@ const EnterpriseNavbar = () => {
     const toggleTheme = () => {
         setTheme(theme === "dark" ? "light" : "dark");
     };
+
+    // Close mobile menu on outside click
+    useEffect(() => {
+        if (!mobileMenuOpen) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMobileMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [mobileMenuOpen]);
 
     if (!mounted) {
         return null; // Avoid rendering mismatch
@@ -144,8 +157,28 @@ const EnterpriseNavbar = () => {
                     </div>
 
                     <div className="flex items-center gap-2 lg:hidden">
-                        <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}><Sun className="size-5 dark:hidden" /><Moon className="size-5 hidden dark:block" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background" aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen}><AnimatePresence mode="wait">{mobileMenuOpen ? <X key="x" className="size-5" /> : <Menu key="menu" className="size-5" />}</AnimatePresence></Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={toggleTheme}
+                          className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                        >
+                          <Sun className="size-5 dark:hidden" />
+                          <Moon className="size-5 hidden dark:block" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                          className="rounded-full focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                          aria-expanded={mobileMenuOpen}
+                        >
+                          <AnimatePresence mode="wait">
+                            {mobileMenuOpen ? <X key="x" className="size-5" /> : <Menu key="menu" className="size-5" />}
+                          </AnimatePresence>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -154,34 +187,51 @@ const EnterpriseNavbar = () => {
 
             <AnimatePresence>
                 {mobileMenuOpen && (
-                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="lg:hidden fixed inset-x-0 top-20 z-[60] bg-background/95 backdrop-blur-xl border-b border-white/10 shadow-xl">
-                        <nav className="container py-6 px-4 max-h-[calc(100vh-5rem)] overflow-auto">
-                            <ul className="flex flex-col gap-2">
+                    <motion.div
+                      key="enterprise-mobile-menu"
+                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="lg:hidden absolute right-4 top-20 w-72 z-50 origin-top-right"
+                    >
+                      <div
+                        ref={menuRef}
+                        className="rounded-2xl bg-[#0B1221]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50 p-4 flex flex-col gap-3 text-sm text-white"
+                      >
+                        <ul className="flex flex-col gap-1">
                                 {navItems.map((item) => (
                                     <li key={item.id}>
                                         <button
                                             onClick={() => scrollToSection(item.id)}
-                                            className={
-                                                `block w-full text-left px-4 py-3 text-base font-medium rounded-lg ` +
-                                                `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ` +
-                                                `focus-visible:ring-offset-2 focus-visible:ring-offset-background ` +
-                                                (activeSection === item.id
-                                                    ? `text-primary bg-primary/20`
-                                                    : `text-muted-foreground hover:bg-white/5`)
-                                            }
+                                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                                  activeSection === item.id
+                                    ? "bg-white/10 text-white"
+                                    : "text-white/80 hover:bg-white/5 hover:text-white"
+                                }`}
                                         >
                                             {item.label}
                                         </button>
                                     </li>
                                 ))}
                             </ul>
-                            <div className="pt-4 mt-4 border-t border-white/10">
+                        <div className="pt-3 mt-2 border-t border-white/10 space-y-2">
                                 <Link href="/contact" onClick={() => setMobileMenuOpen(false)}>
-                                    <Button variant="outline" className="w-full mb-2">Contact</Button>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-center rounded-full border-white/20 text-white hover:bg-white/5"
+                            >
+                              Contact
+                            </Button>
                                 </Link>
-                                <Button onClick={() => scrollToSection("book-a-demo")} className="w-full py-3">Book Demo</Button>
+                          <Button
+                            onClick={() => scrollToSection("book-a-demo")}
+                            className="w-full justify-center rounded-full bg-white text-black hover:bg-white/90"
+                          >
+                            Book Demo
+                          </Button>
+                        </div>
                             </div>
-                        </nav>
                     </motion.div>
                 )}
             </AnimatePresence>

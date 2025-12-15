@@ -1,24 +1,37 @@
-"use client"
+"use client";
 
-import React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb"
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/privacy-policy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms & Conditions" },
-  { href: "/refund-cancellation", label: "Refund & Cancellation" },
-  { href: "/return-policy", label: "Return Policy" },
-]
+const policyLinks = [
+  { href: "/policies/privacy-policy", label: "Privacy Policy" },
+  { href: "/policies/terms", label: "Terms & Conditions" },
+  { href: "/policies/refund-cancellation", label: "Refund & Cancellation" },
+  { href: "/policies/return-policy", label: "Return Policy" },
+];
 
-export default function PolicyLayout({ title, children }: { title: string; children: React.ReactNode }) {
-  const pathname = usePathname()
+interface PolicyLayoutProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+export default function PolicyLayout({ title, children }: PolicyLayoutProps) {
+  const pathname = usePathname();
 
   return (
-    <section className="container mx-auto max-w-6xl px-4">
-      {/* Breadcrumb */}
-      <div className="mb-6">
+    <div className="container mx-auto max-w-7xl px-4 py-8 md:py-12">
+      {/* Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="mb-8">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -26,7 +39,7 @@ export default function PolicyLayout({ title, children }: { title: string; child
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/privacy-policy">Policies</BreadcrumbLink>
+              <span className="text-muted-foreground">Legal</span>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -34,43 +47,54 @@ export default function PolicyLayout({ title, children }: { title: string; child
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-      </div>
+      </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Sidebar */}
-        <aside className="lg:col-span-3">
-          <nav aria-label="Legal navigation" className="rounded-lg border bg-card p-4">
-            <ul className="space-y-2 text-sm">
-              {links.map((l) => {
-                const active = pathname === l.href
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[240px_1fr] lg:gap-12">
+        {/* Sticky Sidebar Navigation */}
+        <aside className="hidden md:block">
+          <nav className="sticky top-24 space-y-1">
+            <h2 className="mb-4 px-3 text-sm font-semibold tracking-tight text-foreground/90">
+              Legal Documents
+            </h2>
+            <ul className="space-y-1">
+              {policyLinks.map((link) => {
+                const isActive = pathname === link.href;
                 return (
-                  <li key={l.href}>
+                  <li key={link.href}>
                     <Link
-                      href={l.href}
-                      className={`block rounded-md px-3 py-2 transition-colors ${
-                        active ? "bg-primary/10 text-primary" : "hover:bg-muted"
-                      }`}
-                      aria-current={active ? "page" : undefined}
+                      href={link.href}
+                      className={cn(
+                        "block rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                      aria-current={isActive ? "page" : undefined}
                     >
-                      {l.label}
+                      {link.label}
                     </Link>
                   </li>
-                )
+                );
               })}
             </ul>
           </nav>
         </aside>
 
-        {/* Content */}
-        <article className="lg:col-span-9">
-          <header className="mb-3">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{title}</h1>
+        {/* Mobile Navigation (Dropdown or Horizontal Scroll can be added here if needed) */}
+        
+        {/* Main Content Area */}
+        <main className="min-w-0">
+          <header className="mb-8 border-b pb-4">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              {title}
+            </h1>
           </header>
-          <div className="prose prose-neutral dark:prose-invert mt-6 max-w-none">
+          
+          <article className="prose prose-neutral max-w-none dark:prose-invert prose-headings:scroll-mt-20 prose-headings:font-semibold prose-a:text-primary hover:prose-a:underline">
             {children}
-          </div>
-        </article>
+          </article>
+        </main>
       </div>
-    </section>
-  )
+    </div>
+  );
 }

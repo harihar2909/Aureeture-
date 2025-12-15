@@ -27,6 +27,7 @@ export interface PathAchievement {
 }
 
 export interface CareerPath {
+  id: string;
   category: string;
   title: string;
   description: string;
@@ -44,24 +45,50 @@ interface PathContextValue {
 }
 
 const DEFAULT_PATH: CareerPath = {
+  id: "data-scientist",
   category: "AI/ML",
   title: "Junior AI Engineer",
-  description: "Break into AI with strong Python, ML foundations, and hands-on projects.",
+  description:
+    "Break into AI with strong Python, ML foundations, and hands-on projects.",
   timeline: "3-6 months",
   nextSteps: [
     "Complete a mini-project using scikit-learn (classification/regression)",
     "Build a portfolio with 2-3 ML case studies and write-ups",
     "Learn Vector Databases & RAG basics",
   ],
-  skillGaps: ["Statistics Basics", "Model Deployment", "Prompt Engineering", "Data Cleaning"],
+  skillGaps: [
+    "Statistics Basics",
+    "Model Deployment",
+    "Prompt Engineering",
+    "Data Cleaning",
+  ],
   resources: [
-    { title: "Hands-On ML with Scikit-Learn, Keras & TF", provider: "O'Reilly", duration: "2-3 weeks" },
-    { title: "Machine Learning Specialization", provider: "Coursera (Andrew Ng)", duration: "4-6 weeks" },
-    { title: "LangChain for LLM Apps", provider: "YouTube", duration: "6 hours" },
+    {
+      title: "Hands-On ML with Scikit-Learn, Keras & TF",
+      provider: "O'Reilly",
+      duration: "2-3 weeks",
+    },
+    {
+      title: "Machine Learning Specialization",
+      provider: "Coursera (Andrew Ng)",
+      duration: "4-6 weeks",
+    },
+    {
+      title: "LangChain for LLM Apps",
+      provider: "YouTube",
+      duration: "6 hours",
+    },
   ],
   achievements: [
-    { title: "Python Foundations", description: "Completed core Python + NumPy/Pandas." },
-    { title: "First ML Model", description: "Trained and evaluated first supervised model.", progress: 70 },
+    {
+      title: "Python Foundations",
+      description: "Completed core Python + NumPy/Pandas.",
+    },
+    {
+      title: "First ML Model",
+      description: "Trained and evaluated first supervised model.",
+      progress: 70,
+    },
   ],
   opportunities: [
     {
@@ -104,7 +131,10 @@ export const PathProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load from storage
   useEffect(() => {
     try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+      const raw =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem(STORAGE_KEY)
+          : null;
       if (raw) {
         setCurrentPath(JSON.parse(raw) as CareerPath);
       }

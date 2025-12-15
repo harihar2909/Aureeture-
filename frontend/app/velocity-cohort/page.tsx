@@ -210,9 +210,12 @@ const HeroSection = ({ onOpenLead }: { onOpenLead: () => void }) => (
           </motion.p>
           
           <motion.div variants={FADE_IN_UP} className="flex flex-wrap items-center gap-4">
-            <Button onClick={onOpenLead} size="lg" className="group relative overflow-hidden rounded-full bg-accent px-8 py-6 text-lg font-bold text-accent-foreground shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-accent/30">
+            <Button
+              onClick={onOpenLead}
+              size="lg"
+              className="rounded-full bg-accent px-8 py-6 text-lg font-bold text-accent-foreground shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-accent/30"
+            >
               <span className="flex items-center justify-center">
-                <span className="absolute top-0 left-0 h-full w-full bg-white/20 opacity-50 animate-subtle-shine group-hover:opacity-100"></span>
                 Join the Cohort
                 <ArrowRight className="ml-2 size-5 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
@@ -658,28 +661,35 @@ const AudienceSection = () => (
 );
 
 const FinalCTASection = () => (
-    <section className="section relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-slate-900">
+    <section className="section relative overflow-hidden bg-background">
+        <div className="absolute inset-0 -z-10 pointer-events-none">
             {/* NOTE: Ensure this image path is correct and the file exists in your `/public` directory. */}
-            <Image src="/tempImageC8u1Nc 1.png" alt="Abstract network pattern" fill className="object-cover opacity-10" />
+            <Image
+              src="/tempImageC8u1Nc 1.png"
+              alt="Abstract network pattern"
+              fill
+              className="object-cover opacity-5"
+            />
         </div>
-        <div className="section-narrow text-center">
+        <div className="section-narrow text-center relative z-10">
             <motion.div
                 variants={FADE_IN_UP}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.3 }}
             >
-                <h2 className="text-4xl md:text-6xl font-bold font-heading bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent mb-6">
+                <h2 className="text-4xl md:text-5xl font-bold font-heading text-foreground mb-6">
                     Ready to Build the Future?
                 </h2>
-                <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-12">
+                <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
                     Seats are limited to ensure a high-quality, personalized experience. Secure your spot and start your journey from learner to innovator.
                 </p>
                 <Link href="#" className="inline-block">
-                  <Button size="lg" className="group relative overflow-hidden rounded-full bg-accent px-12 py-8 text-xl font-bold text-accent-foreground shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-accent/30">
+                  <Button
+                    size="lg"
+                    className="rounded-full bg-accent px-12 py-8 text-xl font-bold text-accent-foreground shadow-lg transition-all duration-300 hover:shadow-2xl hover:shadow-accent/30"
+                  >
                       <span className="flex items-center justify-center">
-                          <span className="absolute top-0 left-0 h-full w-full bg-white/20 opacity-50 animate-subtle-shine group-hover:opacity-100"></span>
                           Apply to Velocity Cohort
                           <ArrowRight className="ml-3 size-6 transition-transform duration-300 group-hover:translate-x-1.5" />
                       </span>
