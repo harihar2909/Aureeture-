@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
 import { format } from "date-fns";
+import { useUser, useAuth } from "@clerk/nextjs";
 
 // --- TYPESCRIPT TYPES ---
 type PersonalInfoKey = 'name' | 'email' | 'phone' | 'location' | 'linkedin';
@@ -196,6 +197,12 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
 
   // --- STATE MANAGEMENT ---
   const { profile, updateProfile } = useProfile();
+  const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
   const [profileData, setProfileData] = useState<ProfileData>({
     name: profile.name || "Your name",
@@ -204,6 +211,141 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
     location: profile.location || "Your city",
     linkedin: (profile as any).linkedIn || "",
   });
+
+  // Fetch profile data from backend
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isLoaded || !user?.id || !apiBase) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get auth token from Clerk
+        const token = await getToken();
+        
+        const res = await fetch(`${apiBase}/api/profile/student`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch profile");
+        }
+
+        const result = await res.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Update profile data - prioritize backend data, fallback to Clerk user data
+          setProfileData({
+            name: data.personalInfo?.name || user?.fullName || user?.firstName || profile.name || "Your name",
+            email: data.personalInfo?.email || user?.primaryEmailAddress?.emailAddress || profile.email || "",
+            phone: data.personalInfo?.phone || "",
+            location: data.personalInfo?.location || profile.location || "Your city",
+            linkedin: data.personalInfo?.linkedin || "",
+          });
+
+          // Update timeline items
+          if (data.timelineItems) {
+            setTimelineItems(data.timelineItems.map((item: any) => ({
+              ...item,
+              startDate: item.startDate ? new Date(item.startDate) : undefined,
+              endDate: item.endDate ? new Date(item.endDate) : undefined,
+            })));
+          }
+
+          // Update skills
+          if (data.skills) {
+            setSkills(data.skills.map((skill: string, index: number) => ({
+              id: index + 1,
+              name: skill,
+            })));
+          }
+
+          // Update tasks
+          if (data.tasks) {
+            setTasks({
+              todo: data.tasks.todo || [],
+              later: data.tasks.later || [],
+              done: data.tasks.done || [],
+            });
+          }
+
+          // Update snapshot data
+          if (data.careerSnapshot) {
+            setSnapshotData({
+              careerStage: data.careerSnapshot.careerStage,
+              longTermGoal: data.careerSnapshot.longTermGoal,
+              currentRole: data.careerSnapshot.currentRole,
+              company: data.careerSnapshot.currentCompany,
+              joinDate: data.careerSnapshot.joinDate,
+            });
+          }
+
+          // Update analytics
+          if (data.analytics) {
+            setAnalytics({
+              profileCompletion: data.analytics.profileCompletion,
+              skillScore: data.analytics.skillScore,
+              connections: data.analytics.connects,
+              applications: data.analytics.applications,
+              jobMatches: data.analytics.matches,
+              chartData: [
+                { name: 'Views', value: data.analytics.views },
+                { name: 'Connects', value: data.analytics.connects },
+                { name: 'Applies', value: data.analytics.applications },
+                { name: 'Matches', value: data.analytics.matches },
+              ],
+            });
+          }
+
+          // Update career goals
+          if (data.careerGoals) {
+            setCareerGoals(data.careerGoals);
+          }
+        }
+      } catch (err: any) {
+        console.error("Error fetching profile:", err);
+        setError(err.message || "Failed to load profile");
+        // Even on error, use Clerk user data as fallback
+        if (user) {
+          setProfileData({
+            name: user.fullName || user.firstName || "Your name",
+            email: user.primaryEmailAddress?.emailAddress || "",
+            phone: "",
+            location: profile.location || "Your city",
+            linkedin: "",
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isLoaded && user?.id && apiBase && getToken) {
+      fetchProfile();
+    } else if (isLoaded && user) {
+      // If no API base URL, use Clerk user data
+      setProfileData({
+        name: user.fullName || user.firstName || "Your name",
+        email: user.primaryEmailAddress?.emailAddress || "",
+        phone: "",
+        location: profile.location || "Your city",
+        linkedin: "",
+      });
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
+  }, [isLoaded, user?.id, apiBase, getToken, user]);
 
   // keep local profileData in sync when global profile changes
   useEffect(() => {
@@ -289,16 +431,16 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
   });
   const [editingTimeline, setEditingTimeline] = useState<TimelineItem | null>(null);
 
-  // --- MOCK DATA ---
-  const snapshotData = {
+  // --- STATE DATA ---
+  const [snapshotData, setSnapshotData] = useState({
     careerStage: 'Professional',
     longTermGoal: 'Become a lead animator',
     currentRole: 'Animator',
     company: 'Disney',
     joinDate: 'Jul 2025'
-  };
+  });
 
-  const analytics = {
+  const [analytics, setAnalytics] = useState({
     profileCompletion: 85,
     skillScore: 847,
     connections: 89,
@@ -310,14 +452,14 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
         { name: 'Applies', value: 12 },
         { name: 'Matches', value: 24 },
     ]
-  };
+  });
 
-  const careerGoals = [
+  const [careerGoals, setCareerGoals] = useState([
     { name: 'Portfolio', progress: 75 },
     { name: 'Networking', progress: 60 },
     { name: 'Skills', progress: 90 },
     { name: 'Experience', progress: 45 },
-  ];
+  ]);
 
   const jobRecommendations = [
     { id: 1, title: 'Senior 3D Animator', company: 'Pixar', location: 'Emeryville, CA', match: 92 },
@@ -330,20 +472,75 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
   const showToast = (message: string) => setToast({ id: Date.now(), message });
 
   const handleSaveAll = async () => {
+    if (!user?.id || !apiBase) {
+      showToast("Unable to save: User not authenticated");
+      return;
+    }
+
+    setSaving(true);
     setIsSaving(true);
-    await simulateApiCall();
+    setError(null);
 
-    updateProfile({
-      name: profileData.name,
-      email: profileData.email,
-      location: profileData.location,
-    } as any);
+    try {
+      const token = await getToken();
+      
+      const updatePayload = {
+        personalInfo: {
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          location: profileData.location,
+          linkedin: profileData.linkedin,
+        },
+        careerSnapshot: snapshotData,
+        timelineItems: timelineItems.map(item => ({
+          type: item.type,
+          title: item.title,
+          subtitle: item.subtitle,
+          description: item.description,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          isCurrent: item.isCurrent,
+        })),
+        skills: skills.map(s => s.name),
+        tasks: tasks,
+        careerGoals: careerGoals,
+        analytics: analytics,
+      };
 
-    setIsSaving(false);
-    showToast("Profile updated successfully!");
+      const res = await fetch(`${apiBase}/api/profile/student`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify(updatePayload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to save profile");
+      }
+
+      updateProfile({
+        name: profileData.name,
+        email: profileData.email,
+        location: profileData.location,
+      } as any);
+
+      showToast("Profile updated successfully!");
+    } catch (err: any) {
+      console.error("Error saving profile:", err);
+      setError(err.message || "Failed to save profile");
+      showToast(err.message || "Failed to save profile");
+    } finally {
+      setSaving(false);
+      setIsSaving(false);
+    }
   };
 
-  const handleProfileDataSave = (key: PersonalInfoKey, value: string) => {
+  const handleProfileDataSave = async (key: PersonalInfoKey, value: string) => {
     setProfileData((prev) => ({ ...prev, [key]: value }));
 
     // also update global profile context immediately
@@ -365,6 +562,29 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
         // @ts-expect-error custom field
         updateProfile({ linkedIn: value });
         break;
+    }
+
+    // Auto-save to backend
+    if (user?.id && apiBase && getToken) {
+      try {
+        const token = await getToken();
+        await fetch(`${apiBase}/api/profile/student`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            personalInfo: {
+              ...profileData,
+              [key]: value,
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Error auto-saving:", err);
+      }
     }
   };
 
@@ -443,11 +663,28 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
     return bEnd - aEnd;
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          <span className="text-sm text-zinc-500">Loading profile...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <AnimatePresence>
         {toast && <Toast key={toast.id} message={toast.message} onDismiss={() => setToast(null)} />}
       </AnimatePresence>
+      
+      {error && (
+        <div className="mx-auto max-w-6xl p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg text-red-700 dark:text-red-200">
+          {error}
+        </div>
+      )}
       
       {/* --- ADD TASK MODAL --- */}
       <Dialog open={isTaskModalOpen} onOpenChange={setTaskModalOpen}>
@@ -878,7 +1115,7 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
         <section>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
             <h1 className="mb-4 text-3xl font-semibold tracking-tight">
-              Hey Rishabh 👋 Welcome back!
+              Hey {profileData.name || user?.firstName || user?.fullName || "there"} 👋 Welcome back!
             </h1>
           </motion.div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

@@ -25,3 +25,4 @@ const Lead = model<ILead>('Lead', LeadSchema);
 
 export default Lead;
 
+

@@ -22,3 +22,4 @@ ConnectionSchema.index({ requester: 1, recipient: 1 }, { unique: true });
 export default model<IConnection>('Connection', ConnectionSchema);
 
 
+

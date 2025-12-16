@@ -190,7 +190,6 @@ const MentorMenteesPage: React.FC = () => {
   const [addingMentee, setAddingMentee] = useState(false);
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  const useMockData = !apiBase || process.env.NEXT_PUBLIC_USE_MOCK_SESSIONS === "true";
 
   const canLoad = useMemo(
     () => isLoaded && isSignedIn && !!user?.id,
@@ -203,44 +202,10 @@ const MentorMenteesPage: React.FC = () => {
       return;
     }
 
-    if (useMockData) {
-      setMentees([
-        {
-          id: "m1",
-          name: "Aditi Sharma",
-          email: "aditi@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aditi",
-          goal: "Crack FAANG SDE role in 6 months",
-          progress: 65,
-          lastSession: "12 Dec 2025",
-          nextSession: "18 Dec, 7:30 PM",
-          status: "Active",
-        },
-        {
-          id: "m2",
-          name: "Karan Patel",
-          email: "karan@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Karan",
-          goal: "Transition to backend engineer",
-          progress: 40,
-          lastSession: "08 Dec 2025",
-          nextSession: "15 Dec, 5:00 PM",
-          status: "Active",
-        },
-        {
-          id: "m3",
-          name: "Priya Sharma",
-          email: "priya@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya",
-          goal: "Improve React performance skills",
-          progress: 20,
-          lastSession: "01 Dec 2025",
-          nextSession: "22 Dec, 11:00 AM",
-          status: "New",
-        },
-      ]);
-      setError(null);
+    if (!apiBase) {
+      setError("API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in your environment variables.");
       setLoading(false);
+      setMentees([]);
       return;
     }
 
@@ -260,49 +225,23 @@ const MentorMenteesPage: React.FC = () => {
       );
 
       if (!res.ok) {
-        throw new Error("Failed to fetch mentees");
+        let errorMessage = "Failed to fetch mentees";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = (await res.json()) as MenteesResponse;
       setMentees(data.mentees || []);
+      setError(null);
     } catch (err: any) {
       console.error("Error fetching mentees:", err);
-      setError(err.message || "Unable to load mentees. Showing mock data.");
-      setMentees([
-        {
-          id: "m1",
-          name: "Aditi Sharma",
-          email: "aditi@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aditi",
-          goal: "Crack FAANG SDE role in 6 months",
-          progress: 65,
-          lastSession: "12 Dec 2025",
-          nextSession: "18 Dec, 7:30 PM",
-          status: "Active",
-        },
-        {
-          id: "m2",
-          name: "Karan Patel",
-          email: "karan@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Karan",
-          goal: "Transition to backend engineer",
-          progress: 40,
-          lastSession: "08 Dec 2025",
-          nextSession: "15 Dec, 5:00 PM",
-          status: "Active",
-        },
-        {
-          id: "m3",
-          name: "Priya Sharma",
-          email: "priya@example.com",
-          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya",
-          goal: "Improve React performance skills",
-          progress: 20,
-          lastSession: "01 Dec 2025",
-          nextSession: "22 Dec, 11:00 AM",
-          status: "New",
-        },
-      ]);
+      setError(err.message || "Unable to load mentees. Please try again.");
+      setMentees([]);
     } finally {
       setLoading(false);
     }
@@ -311,8 +250,22 @@ const MentorMenteesPage: React.FC = () => {
   useEffect(() => {
     if (canLoad) {
       fetchMentees();
+      // Auto-refresh every 30 seconds
+      const interval = setInterval(fetchMentees, 30000);
+      return () => clearInterval(interval);
     }
-  }, [canLoad]);
+  }, [canLoad, user?.id, apiBase]);
+
+  // Refresh on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (canLoad) {
+        fetchMentees();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [canLoad, user?.id, apiBase]);
 
   const filteredMentees =
     filter === "all"
@@ -324,47 +277,47 @@ const MentorMenteesPage: React.FC = () => {
       return;
     }
 
+    if (!apiBase || !user?.id) {
+      alert("API configuration error. Please check your environment variables.");
+      return;
+    }
+
     setAddingMentee(true);
     try {
-      if (apiBase && user?.id) {
-        const res = await fetch(`${apiBase}/api/mentor-mentees`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            mentorId: user.id,
-            ...newMenteeForm,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to add mentee");
-        }
-
-        const newMentee = await res.json();
-        setMentees((prev) => [...prev, newMentee]);
-      } else {
-        // Mock add for demo
-        const newMentee: Mentee = {
-          id: `m${Date.now()}`,
+      const res = await fetch(`${apiBase}/api/mentor-mentees`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          mentorId: user.id,
           name: newMenteeForm.name,
           email: newMenteeForm.email,
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(newMenteeForm.name)}`,
           goal: newMenteeForm.goal,
-          progress: 0,
-          lastSession: "Never",
           status: newMenteeForm.status,
-        };
-        setMentees((prev) => [...prev, newMentee]);
+        }),
+      });
+
+      if (!res.ok) {
+        let errorMessage = "Failed to add mentee";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
+      const newMentee = await res.json();
+      // Refetch mentees to ensure consistency
+      await fetchMentees();
       setIsAddMenteeOpen(false);
       setNewMenteeForm({ name: "", email: "", goal: "", status: "New" });
     } catch (err: any) {
       console.error("Error adding mentee:", err);
-      alert(err.message || "Failed to add mentee");
+      alert(err.message || "Failed to add mentee. Please try again.");
     } finally {
       setAddingMentee(false);
     }

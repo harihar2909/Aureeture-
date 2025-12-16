@@ -85,17 +85,23 @@ const PaymentPage: React.FC = () => {
           // Payment successful - trigger post-payment automation
           try {
             const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+            // Get student info from Clerk user
+            const studentId = searchParams.get("studentId") || `student_${Date.now()}`;
+            const studentName = searchParams.get("studentName") || "Student";
+            const studentEmail = searchParams.get("studentEmail") || "";
+
             const confirmRes = await fetch(`${apiBase}/api/mentor-sessions/confirm-payment`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 mentorId: searchParams.get("mentorId") || "",
-                studentName: searchParams.get("studentName") || name,
-                studentEmail: searchParams.get("studentEmail") || "",
+                studentId: studentId,
+                studentName: studentName,
+                studentEmail: studentEmail,
                 title: searchParams.get("title") || `Session with ${name}`,
                 description: searchParams.get("description") || "",
-                startTime: searchParams.get("selectedStartTime") || "",
-                endTime: searchParams.get("selectedEndTime") || "",
+                startTime: searchParams.get("selectedStartTime") || searchParams.get("selectedStartTime") || "",
+                endTime: searchParams.get("selectedEndTime") || searchParams.get("selectedEndTime") || "",
                 amount: price,
                 paymentId: response.razorpay_payment_id,
                 mentorEmail: searchParams.get("mentorEmail") || "",
@@ -107,9 +113,9 @@ const PaymentPage: React.FC = () => {
               setStatusMessage(
                 "Payment successful! Session confirmed. Check your email for details."
               );
-              // Redirect to student dashboard after 2 seconds
+              // Redirect to student sessions page after 2 seconds
               setTimeout(() => {
-                window.location.href = "/dashboard/student/overview";
+                window.location.href = "/dashboard/student/sessions?tab=upcoming";
               }, 2000);
             } else {
               setStatusMessage(

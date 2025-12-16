@@ -7,7 +7,11 @@ export const getUserProfile = async (userId: string) => {
         throw new Error('User not found');
     }
 
-    const profile = await Profile.findOne({ userId: user._id }).populate('userId', 'name email avatar');
+    const profile = await Profile.findOne({ userId: user._id });
+    if (profile) {
+        // Manually populate user data
+        (profile as any).userId = user;
+    }
     return profile;
 };
 
@@ -17,10 +21,11 @@ export const createUserProfile = async (userId: string, profileData: Partial<IPr
         throw new Error('User not found');
     }
 
-    // Check if profile already exists
+    // Check if profile already exists - if it does, update it instead
     const existingProfile = await Profile.findOne({ userId: user._id });
     if (existingProfile) {
-        throw new Error('Profile already exists');
+        // Update existing profile instead of throwing error
+        return await updateUserProfile(userId, profileData);
     }
 
     const profile = await Profile.create({
@@ -37,14 +42,19 @@ export const updateUserProfile = async (userId: string, updateData: Partial<IPro
         throw new Error('User not found');
     }
 
-    const profile = await Profile.findOneAndUpdate(
+    let profile = await Profile.findOneAndUpdate(
         { userId: user._id },
-        updateData,
-        { new: true, runValidators: true }
+        { $set: updateData },
+        { new: true, runValidators: true, upsert: true }
     ).populate('userId', 'name email avatar');
 
     if (!profile) {
-        throw new Error('Profile not found');
+        // If still not found after upsert, create it
+        profile = await Profile.create({
+            userId: user._id,
+            ...updateData
+        });
+        return profile.populate('userId', 'name email avatar');
     }
 
     return profile;

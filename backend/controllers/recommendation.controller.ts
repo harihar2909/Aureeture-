@@ -145,3 +145,4 @@ export const generateAndSaveEmbedding = async (userProfileId: string): Promise<v
     }
 };
 
+

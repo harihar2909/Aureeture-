@@ -7,6 +7,7 @@ import projectRoutes from './project.routes';
 import peopleRoutes from './people.routes';
 import caroRoutes from './caro.routes';
 import mentorRoutes from './mentor.routes';
+import mentorsRoutes from './mentors.routes';
 import sessionRoutes from './session.routes';
 import contactRoutes from './contact.routes';
 
@@ -23,6 +24,7 @@ router.use('/caro', caroRoutes);
 // Mentor routes - these handle /api/mentor-sessions, /api/mentor-mentees, etc.
 // The mentorRoutes file exports routes that match frontend expectations
 router.use('/', mentorRoutes);
+router.use('/', mentorsRoutes); // Handles /api/mentors (for students to browse mentors)
 router.use('/session', sessionRoutes);
 router.use('/', contactRoutes); // Leads, enterprise-demo, contact
 

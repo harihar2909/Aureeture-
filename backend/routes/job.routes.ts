@@ -24,3 +24,4 @@ router.get('/applications/me', getUserApplications);
 export default router;
 
 
+

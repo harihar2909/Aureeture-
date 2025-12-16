@@ -7,7 +7,7 @@ export default function StudentDashboardIndex() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/dashboard/student/profile");
+    router.replace("/dashboard/student/overview");
   }, [router]);
 
   return null;

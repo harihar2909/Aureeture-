@@ -96,3 +96,4 @@ const UserProfile: Model<IUserProfile> = mongoose.model<IUserProfile>('UserProfi
 
 export default UserProfile;
 
+

@@ -175,13 +175,16 @@ const SlotSelectionPage: React.FC = () => {
   };
 
   const handleProceedToPayment = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || !user) return;
 
     const params = new URLSearchParams({
       ...Object.fromEntries(searchParams.entries()),
       selectedSlotId: selectedSlot.id,
       selectedStartTime: selectedSlot.startTime.toISOString(),
       selectedEndTime: selectedSlot.endTime.toISOString(),
+      studentId: user.id || `student_${Date.now()}`,
+      studentName: user.fullName || user.firstName || "Student",
+      studentEmail: user.primaryEmailAddress?.emailAddress || "",
     });
 
     router.push(`/dashboard/payment?${params.toString()}`);

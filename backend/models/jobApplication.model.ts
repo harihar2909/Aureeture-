@@ -25,3 +25,4 @@ JobApplicationSchema.index({ jobId: 1, applicantId: 1 }, { unique: true });
 export default model<IJobApplication>('JobApplication', JobApplicationSchema);
 
 
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +11,7 @@ import {
   Star,
   ShieldCheck,
   Linkedin,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,7 @@ import {
 
 // --- Types & Data ---
 type Expert = {
-  id: number;
+  id: string | number;
   name: string;
   role: string;
   company: string;
@@ -48,6 +49,16 @@ type Expert = {
   experience: string;
   verified: boolean;
   linkedinUrl: string;
+};
+
+type MentorsResponse = {
+  mentors: Expert[];
+  stats: {
+    totalMentors: number;
+    avgHourlyRate: number;
+    activeSessions: number;
+    satisfaction: string;
+  };
 };
 
 const allExperts: Expert[] = [
@@ -176,9 +187,65 @@ export default function StudentMentorsPage() {
   const [selectedDomain, setSelectedDomain] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
+  const [experts, setExperts] = useState<Expert[]>([]);
+  const [stats, setStats] = useState({
+    totalMentors: 124,
+    avgHourlyRate: 3200,
+    activeSessions: 18,
+    satisfaction: "4.9",
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+
+  useEffect(() => {
+    const fetchMentors = async () => {
+      if (!apiBase) {
+        // If no API base URL, use mock data
+        setExperts(allExperts);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch(`${apiBase}/api/mentors`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch mentors");
+        }
+
+        const data = (await res.json()) as MentorsResponse;
+        setExperts(data.mentors || []);
+        setStats(data.stats || stats);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching mentors:", err);
+        setError(err.message || "Failed to load mentors");
+        // Fallback to mock data on error
+        setExperts(allExperts);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMentors();
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(fetchMentors, 60000);
+    return () => clearInterval(interval);
+  }, [apiBase]);
 
   const filteredExperts = useMemo(() => {
-    return allExperts.filter((expert) => {
+    return experts.filter((expert) => {
       const matchesSearch =
         expert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         expert.company.toLowerCase().includes(searchQuery.toLowerCase());
@@ -186,7 +253,7 @@ export default function StudentMentorsPage() {
         selectedDomain === "All" || expert.domain === selectedDomain;
       return matchesSearch && matchesDomain;
     });
-  }, [searchQuery, selectedDomain]);
+  }, [searchQuery, selectedDomain, experts]);
 
   return (
     <div className="space-y-6">
@@ -200,10 +267,10 @@ export default function StudentMentorsPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Mentors" value="124" />
-        <StatCard label="Avg. Hourly Rate" value="₹3,200" />
-        <StatCard label="Active Sessions" value="18" />
-        <StatCard label="Satisfaction" value="4.9/5.0" />
+        <StatCard label="Total Mentors" value={loading ? "..." : stats.totalMentors.toString()} />
+        <StatCard label="Avg. Hourly Rate" value={loading ? "..." : `₹${stats.avgHourlyRate.toLocaleString("en-IN")}`} />
+        <StatCard label="Active Sessions" value={loading ? "..." : stats.activeSessions.toString()} />
+        <StatCard label="Satisfaction" value={loading ? "..." : `${stats.satisfaction}/5.0`} />
       </div>
 
       {/* Filters & Search */}
@@ -272,21 +339,47 @@ export default function StudentMentorsPage() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg text-red-700 dark:text-red-200 text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Experts Grid/List */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={viewMode}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className={
-            viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
-              : "flex flex-col gap-3"
-          }
-        >
-          {filteredExperts.map((expert) => (
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading mentors...
+          </div>
+        </div>
+      ) : filteredExperts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            No mentors found
+          </p>
+          <p className="text-xs text-zinc-500">
+            {searchQuery || selectedDomain !== "All"
+              ? "Try adjusting your search or filters"
+              : "No mentors available at the moment"}
+          </p>
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={viewMode}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                : "flex flex-col gap-3"
+            }
+          >
+            {filteredExperts.map((expert) => (
             <div
               key={expert.id}
               className={`group relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 ${
@@ -379,9 +472,10 @@ export default function StudentMentorsPage() {
                 </Button>
               </div>
             </div>
-          ))}
-        </motion.div>
-      </AnimatePresence>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      )}
 
       {/* Booking Dialog */}
       <Dialog
@@ -421,26 +515,28 @@ export default function StudentMentorsPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedExpert(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setSelectedExpert(null)}
+            >
               Cancel
             </Button>
             <Button
               onClick={() => {
-                if (!selectedExpert) return;
-                const params = new URLSearchParams({
-                  name: selectedExpert.name,
-                  role: selectedExpert.role,
-                  company: selectedExpert.company,
-                  price: String(selectedExpert.price),
-                  linkedin: selectedExpert.linkedinUrl,
-                  mentorId: String(selectedExpert.id), // Using expert ID as mentorId for now
-                });
-                setSelectedExpert(null);
-                // Redirect to slot selection page first
-                router.push(`/dashboard/student/booking/slot-selection?${params.toString()}`);
+                if (selectedExpert) {
+                  const params = new URLSearchParams({
+                    name: selectedExpert.name,
+                    role: selectedExpert.role,
+                    company: selectedExpert.company,
+                    price: selectedExpert.price.toString(),
+                    mentorId: String(selectedExpert.id),
+                    linkedin: selectedExpert.linkedinUrl,
+                  });
+                  router.push(`/dashboard/student/booking/slot-selection?${params.toString()}`);
+                }
               }}
             >
-              Select Time Slot
+              Book Session
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,19 +9,19 @@ import {
   User,
   Video,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-type SessionStatus = "scheduled" | "ongoing" | "completed" | "cancelled" | "reschedule_requested";
+type SessionStatus = "scheduled" | "ongoing" | "completed" | "cancelled";
 
-type MentorSession = {
-  _id: string;
+type StudentSession = {
+  id: string;
   mentorId: string;
-  studentName: string;
-  studentEmail?: string;
   title: string;
   description?: string;
   startTime: string;
@@ -32,26 +32,15 @@ type MentorSession = {
   meetingLink?: string;
   recordingUrl?: string;
   notes?: string;
+  amount?: number;
+  currency?: string;
 };
 
 type SessionsResponse = {
-  upcoming: MentorSession[];
-  past: MentorSession[];
+  upcoming: StudentSession[];
+  past: StudentSession[];
+  total: number;
 };
-
-const Widget: React.FC<{
-  children: React.ReactNode;
-  className?: string;
-}> = ({ children, className }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.25 }}
-    className={`rounded-2xl border border-zinc-200/80 bg-white/95 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/90 ${className}`}
-  >
-    {children}
-  </motion.div>
-);
 
 const formatDateTime = (iso: string) => {
   const d = new Date(iso);
@@ -69,33 +58,28 @@ const statusLabel: Record<SessionStatus, string> = {
   ongoing: "Ongoing",
   completed: "Completed",
   cancelled: "Cancelled",
-  reschedule_requested: "Reschedule Requested",
 };
 
-// Border-only colors for status (premium design)
 const statusBorderColors: Record<SessionStatus, string> = {
-  scheduled: "border-blue-500/60 dark:border-blue-400/60", // Upcoming - Blue
-  ongoing: "border-blue-500/60 dark:border-blue-400/60", // Ongoing - Blue
-  completed: "border-emerald-500/60 dark:border-emerald-400/60", // Completed - Green
-  cancelled: "border-zinc-300 dark:border-zinc-700", // Cancelled - Neutral
-  reschedule_requested: "border-amber-500/60 dark:border-amber-400/60", // Reschedule - Yellow
+  scheduled: "border-blue-500/60 dark:border-blue-400/60",
+  ongoing: "border-blue-500/60 dark:border-blue-400/60",
+  completed: "border-emerald-500/60 dark:border-emerald-400/60",
+  cancelled: "border-zinc-300 dark:border-zinc-700",
 };
 
-// Badge colors (subtle backgrounds)
 const statusColorClasses: Record<SessionStatus, string> = {
   scheduled: "bg-blue-50/50 text-blue-700 border-blue-200/50 dark:bg-blue-900/10 dark:text-blue-300 dark:border-blue-800/30",
   ongoing: "bg-blue-50/50 text-blue-700 border-blue-200/50 dark:bg-blue-900/10 dark:text-blue-300 dark:border-blue-800/30",
   completed: "bg-emerald-50/50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-900/10 dark:text-emerald-300 dark:border-emerald-800/30",
   cancelled: "bg-zinc-50/50 text-zinc-600 border-zinc-200/50 dark:bg-zinc-900/40 dark:text-zinc-300 dark:border-zinc-800/50",
-  reschedule_requested: "bg-amber-50/50 text-amber-700 border-amber-200/50 dark:bg-amber-900/10 dark:text-amber-300 dark:border-amber-800/30",
 };
 
-const MentorSessionsPage: React.FC = () => {
+const StudentSessionsPage: React.FC = () => {
   const { user, isLoaded, isSignedIn } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [upcoming, setUpcoming] = useState<MentorSession[]>([]);
-  const [past, setPast] = useState<MentorSession[]>([]);
+  const [upcoming, setUpcoming] = useState<StudentSession[]>([]);
+  const [past, setPast] = useState<StudentSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
@@ -126,7 +110,7 @@ const MentorSessionsPage: React.FC = () => {
 
     try {
       const res = await fetch(
-        `${apiBase}/api/mentor-sessions?mentorId=${encodeURIComponent(user.id)}`,
+        `${apiBase}/api/student-sessions?studentId=${encodeURIComponent(user.id)}`,
         {
           method: "GET",
           headers: {
@@ -149,11 +133,11 @@ const MentorSessionsPage: React.FC = () => {
       
       const data = (await res.json()) as SessionsResponse;
       
-      // Backend is the single source of truth - use data as-is
-      // Ensure dates are properly formatted strings
-      const formatSessions = (sessions: MentorSession[]) => {
+      // Format sessions properly
+      const formatSessions = (sessions: any[]) => {
         return sessions.map(s => ({
           ...s,
+          id: s.id || s._id?.toString() || "",
           startTime: typeof s.startTime === 'string' ? s.startTime : new Date(s.startTime).toISOString(),
           endTime: typeof s.endTime === 'string' ? s.endTime : new Date(s.endTime).toISOString(),
         }));
@@ -163,9 +147,8 @@ const MentorSessionsPage: React.FC = () => {
       setPast(formatSessions(data.past || []));
       setError(null);
     } catch (err: any) {
-      console.error("Error fetching mentor sessions:", err);
+      console.error("Error fetching student sessions:", err);
       setError(err.message || "Failed to load sessions. Please try again.");
-      // Don't set mock data - show error instead
       setUpcoming([]);
       setPast([]);
     } finally {
@@ -193,7 +176,7 @@ const MentorSessionsPage: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [canLoad, user?.id, apiBase]);
 
-  // Sync initial tab from URL (?tab=upcoming|past) and push updates back
+  // Sync initial tab from URL
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab === "upcoming" || tab === "past") {
@@ -208,17 +191,16 @@ const MentorSessionsPage: React.FC = () => {
     router.replace(`?${current.toString()}`);
   };
 
-  const openDetails = (session: MentorSession) => {
-    // Navigate to dedicated session details page
-    router.push(`/dashboard/mentor/sessions/${session._id}`);
+  const openDetails = (session: StudentSession) => {
+    router.push(`/dashboard/student/sessions/${session.id}`);
   };
 
-  const renderSessionRow = (session: MentorSession) => {
+  const renderSessionRow = (session: StudentSession) => {
     const borderColor = statusBorderColors[session.status] || "border-zinc-200 dark:border-zinc-800";
     
     return (
       <motion.button
-        key={session._id}
+        key={session.id}
         onClick={() => openDetails(session)}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
@@ -229,15 +211,11 @@ const MentorSessionsPage: React.FC = () => {
             <div className={`p-2 rounded-lg ${
               session.status === "completed" 
                 ? "bg-emerald-50 dark:bg-emerald-900/20" 
-                : session.status === "reschedule_requested"
-                ? "bg-amber-50 dark:bg-amber-900/20"
                 : "bg-blue-50 dark:bg-blue-900/20"
             }`}>
               <Video className={`h-4 w-4 ${
                 session.status === "completed"
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : session.status === "reschedule_requested"
-                  ? "text-amber-600 dark:text-amber-400"
                   : "text-blue-600 dark:text-blue-400"
               }`} />
             </div>
@@ -249,10 +227,6 @@ const MentorSessionsPage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-              <span className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" />
-                {session.studentName}
-              </span>
               <span className="flex items-center gap-1.5">
                 <CalendarIcon className="h-3.5 w-3.5" />
                 {formatDateTime(session.startTime)}
@@ -286,7 +260,7 @@ const MentorSessionsPage: React.FC = () => {
       <div className="flex h-full items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-zinc-500">
           <span className="h-4 w-4 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
-          Loading mentor sessions...
+          Loading sessions...
         </div>
       </div>
     );
@@ -297,10 +271,10 @@ const MentorSessionsPage: React.FC = () => {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="space-y-2 text-center">
           <h1 className="text-xl font-semibold tracking-tight">
-            Mentor Sessions
+            My Sessions
           </h1>
           <p className="text-sm text-zinc-500">
-            Please sign in as a mentor to access your session dashboard.
+            Please sign in to access your sessions.
           </p>
         </div>
       </div>
@@ -313,26 +287,26 @@ const MentorSessionsPage: React.FC = () => {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Mentor Sessions
+            My Sessions
           </h1>
           <p className="text-sm text-zinc-500">
-            Review upcoming calls, past sessions, and keep your notes in one
-            place.
+            Review your upcoming and past mentoring sessions.
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={fetchSessions}
+            variant="outline"
             className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             <Clock className="h-4 w-4" />
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Content */}
-      <Widget className="mx-auto max-w-6xl p-4 md:p-5">
+      <Card className="mx-auto max-w-6xl rounded-2xl border border-zinc-200/80 bg-white/95 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/90 p-4 md:p-5">
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200">
             <span>{error}</span>
@@ -342,7 +316,7 @@ const MentorSessionsPage: React.FC = () => {
         {loading ? (
           <div className="flex items-center justify-center py-10">
             <div className="flex items-center gap-2 text-sm text-zinc-500">
-              <span className="h-4 w-4 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin" />
               Loading your sessions...
             </div>
           </div>
@@ -354,7 +328,7 @@ const MentorSessionsPage: React.FC = () => {
                 No sessions yet
               </p>
               <p className="text-xs text-zinc-500">
-                Sessions will appear here once students book and pay for your mentoring slots.
+                Book your first mentoring session to get started.
               </p>
             </div>
           </div>
@@ -395,7 +369,7 @@ const MentorSessionsPage: React.FC = () => {
                     No upcoming sessions
                   </p>
                   <p className="text-xs text-zinc-500">
-                    Sessions will appear here once students book and pay for your mentoring slots.
+                    Book a session with a mentor to get started.
                   </p>
                 </div>
               ) : (
@@ -419,9 +393,11 @@ const MentorSessionsPage: React.FC = () => {
             </TabsContent>
           </Tabs>
         )}
-      </Widget>
+      </Card>
     </div>
   );
 };
 
-export default MentorSessionsPage;
+export default StudentSessionsPage;
+
+

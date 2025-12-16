@@ -180,20 +180,27 @@ const MentorOverviewPage: React.FC = () => {
   const [todaySessions, setTodaySessions] = useState<MentorSession[]>([]);
   const [loadingToday, setLoadingToday] = useState(true);
   const [todayError, setTodayError] = useState<string | null>(null);
-  const [pendingRequests, setPendingRequests] = useState([
-    {
-      id: "req-1",
-      name: "Sneha Kulkarni",
-      summary: "Session request",
-      createdAt: "2 min ago",
-    },
-    {
-      id: "req-2",
-      name: "Amit",
-      summary: "Feedback pending",
-      createdAt: "Today",
-    },
-  ]);
+  const [pendingRequests, setPendingRequests] = useState<Array<{
+    id: string;
+    name: string;
+    summary: string;
+    createdAt: string;
+    type?: string;
+    sessionId?: string;
+    action?: string;
+  }>>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+
+  // Dashboard stats
+  const [stats, setStats] = useState({
+    earnings: { total: 0, formatted: "₹0", change: 0, changeType: "increase" as "increase" | "decrease" },
+    mentees: { active: 0, total: 0, newRequests: 0 },
+    rating: { value: 0, reviewCount: 0 },
+    visibility: { percentage: 0 },
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -212,6 +219,88 @@ const MentorOverviewPage: React.FC = () => {
     }
   }, [router]);
 
+  // Load dashboard stats
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!canLoadSessions || !user?.id || !apiBase) return;
+      setLoadingStats(true);
+      setStatsError(null);
+      try {
+        const res = await fetch(
+          `${apiBase}/api/mentor/stats?mentorId=${encodeURIComponent(user.id)}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          }
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.message || "Unable to load stats");
+        }
+        const data = await res.json();
+        setStats(data);
+      } catch (err: any) {
+        console.error("Error loading stats:", err);
+        setStatsError(err.message || "Unable to load dashboard stats");
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    loadStats();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadStats, 30000);
+    return () => clearInterval(interval);
+  }, [apiBase, canLoadSessions, user?.id]);
+
+  // Refresh on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (canLoadSessions && user?.id && apiBase) {
+        // Reload all data when window regains focus
+        window.location.reload();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [canLoadSessions, user?.id, apiBase]);
+
+  // Load pending requests
+  useEffect(() => {
+    const loadRequests = async () => {
+      if (!canLoadSessions || !user?.id || !apiBase) return;
+      setLoadingRequests(true);
+      setRequestsError(null);
+      try {
+        const res = await fetch(
+          `${apiBase}/api/mentor/pending-requests?mentorId=${encodeURIComponent(user.id)}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          }
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.message || "Unable to load requests");
+        }
+        const data = await res.json();
+        setPendingRequests(data.requests || []);
+      } catch (err: any) {
+        console.error("Error loading requests:", err);
+        setRequestsError(err.message || "Unable to load pending requests");
+        // Set empty array on error to show "all caught up" message
+        setPendingRequests([]);
+      } finally {
+        setLoadingRequests(false);
+      }
+    };
+    loadRequests();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadRequests, 30000);
+    return () => clearInterval(interval);
+  }, [apiBase, canLoadSessions, user?.id]);
+
   // Load sessions for today from backend for this mentor
   useEffect(() => {
     const loadToday = async () => {
@@ -222,7 +311,12 @@ const MentorOverviewPage: React.FC = () => {
         const res = await fetch(
           `${apiBase}/api/mentor-sessions?mentorId=${encodeURIComponent(
             user.id
-          )}`
+          )}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          }
         );
         if (!res.ok) {
           const data = await res.json().catch(() => null);
@@ -242,12 +336,15 @@ const MentorOverviewPage: React.FC = () => {
         setTodaySessions(filtered.slice(0, 5));
       } catch (err: any) {
         console.error("Error loading today sessions:", err);
-        setTodayError(err.message || "Unable to load today’s sessions");
+        setTodayError(err.message || "Unable to load today's sessions");
       } finally {
         setLoadingToday(false);
       }
     };
     loadToday();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadToday, 30000);
+    return () => clearInterval(interval);
   }, [apiBase, canLoadSessions, user?.id]);
 
   const handleCopyProfileLink = async () => {
@@ -262,16 +359,12 @@ const MentorOverviewPage: React.FC = () => {
     }
   };
 
-  // Note: Accept/Decline removed for paid bookings - they are auto-confirmed
-  // Only free/unpaid requests would show here, but with new "Instant Commitment" model,
-  // all paid bookings are confirmed immediately after payment
-  const handleAcceptRequest = (id: string) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== id));
-    // In a real app, you would also call a backend endpoint here.
+  const handleViewSession = (sessionId: string) => {
+    router.push(`/dashboard/mentor/sessions/${sessionId}`);
   };
 
-  const handleDeclineRequest = (id: string) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+  const handleWriteFeedback = (sessionId: string) => {
+    router.push(`/dashboard/mentor/sessions/${sessionId}`);
   };
 
   const handleGoToSessions = (tab: "upcoming" | "past" = "upcoming") => {
@@ -359,28 +452,28 @@ const MentorOverviewPage: React.FC = () => {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total earnings"
-          value="₹42,500"
-          subtitle="+18% from last month"
+          value={loadingStats ? "Loading..." : stats.earnings.formatted}
+          subtitle={loadingStats ? "" : `${stats.earnings.change >= 0 ? '+' : ''}${stats.earnings.change}% from last month`}
           icon={TrendingUp}
           delay={0.1}
         />
         <StatCard
           title="Active mentees"
-          value="14"
-          subtitle="2 new requests pending"
+          value={loadingStats ? "Loading..." : String(stats.mentees.active)}
+          subtitle={loadingStats ? "" : `${stats.mentees.newRequests} new requests pending`}
           icon={Users}
           delay={0.15}
         />
         <StatCard
           title="Rating"
-          value="4.9"
-          subtitle="Based on 128 reviews"
+          value={loadingStats ? "Loading..." : String(stats.rating.value)}
+          subtitle={loadingStats ? "" : `Based on ${stats.rating.reviewCount} reviews`}
           icon={Star}
           delay={0.2}
         />
         <StatCard
           title="Profile visibility"
-          value="92%"
+          value={loadingStats ? "Loading..." : `${stats.visibility.percentage}%`}
           subtitle="Higher visibility gives you more booking requests"
           icon={Video}
           delay={0.25}
@@ -477,14 +570,23 @@ const MentorOverviewPage: React.FC = () => {
               </h3>
             </div>
             <div className="space-y-3">
-              {pendingRequests.length === 0 ? (
+              {loadingRequests ? (
+                <div className="flex items-center justify-center py-4 text-xs text-zinc-500">
+                  <span className="mr-2 h-4 w-4 rounded-full border-2 border-zinc-300 border-t-zinc-600 animate-spin" />
+                  Loading requests...
+                </div>
+              ) : requestsError ? (
+                <p className="text-xs text-red-500 py-4 text-center">
+                  {requestsError}
+                </p>
+              ) : pendingRequests.length === 0 ? (
                 <p className="text-xs text-zinc-500">
                   You&apos;re all caught up. New student requests will appear
                   here.
                 </p>
               ) : (
                 pendingRequests.map((req) =>
-                  req.id === "req-1" ? (
+                  req.type === "paid_booking" ? (
                     <div
                       key={req.id}
                       className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50"
@@ -494,7 +596,7 @@ const MentorOverviewPage: React.FC = () => {
                         <div>
                           <p className="text-sm text-zinc-700 dark:text-zinc-300">
                             <span className="font-medium">{req.name}</span>{" "}
-                            booked a paid session.
+                            {req.summary}
                           </p>
                           <p className="text-[11px] text-zinc-500">
                             {req.createdAt} • Auto-confirmed after payment
@@ -506,7 +608,7 @@ const MentorOverviewPage: React.FC = () => {
                         variant="outline"
                         className="h-7 text-xs"
                         type="button"
-                        onClick={() => handleGoToSessions("upcoming")}
+                        onClick={() => req.sessionId && handleViewSession(req.sessionId)}
                       >
                         View Session
                       </Button>
@@ -519,9 +621,7 @@ const MentorOverviewPage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-700" />
                         <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                          Complete feedback for{" "}
-                          <span className="font-medium">Amit&apos;s</span> mock
-                          interview.
+                          {req.summary}
                         </p>
                       </div>
                       <Button
@@ -529,7 +629,7 @@ const MentorOverviewPage: React.FC = () => {
                         variant="outline"
                         className="h-7 text-xs"
                         type="button"
-                        onClick={() => handleGoToSessions("past")}
+                        onClick={() => req.sessionId && handleWriteFeedback(req.sessionId)}
                       >
                         Write feedback
                       </Button>
@@ -592,14 +692,23 @@ const MentorOverviewPage: React.FC = () => {
             </div>
             <h3 className="text-lg font-bold mb-2">You&apos;re in the top 5%</h3>
             <p className="text-sm text-zinc-400 mb-4">
-              Your session rating of 4.9 is exceptional. Keep it up to earn
-              the &quot;Super Mentor&quot; badge next month.
+              {loadingStats ? (
+                "Loading performance data..."
+              ) : (
+                <>
+                  Your session rating of {stats.rating.value} is exceptional. Keep it up to earn
+                  the &quot;Super Mentor&quot; badge next month.
+                </>
+              )}
             </p>
             <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full w-[92%]" />
+              <div 
+                className="bg-emerald-500 h-full transition-all duration-500" 
+                style={{ width: `${loadingStats ? 0 : stats.visibility.percentage}%` }}
+              />
             </div>
             <p className="text-[10px] text-right mt-1 text-zinc-500">
-              92% to goal
+              {loadingStats ? "Loading..." : `${stats.visibility.percentage}% to goal`}
             </p>
           </DashboardWidget>
         </div>
