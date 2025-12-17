@@ -3,6 +3,7 @@ import MentorSession from '../models/mentorSession.model';
 import MentorAvailability from '../models/mentorAvailability.model';
 import { generateAgoraToken } from '../services/agoraToken.service';
 import { sendEmail, generateSessionConfirmationEmail } from '../services/email.service';
+import MentorMenteeMessage from '../models/mentorMenteeMessage.model';
 
 const router = Router();
 
@@ -412,7 +413,7 @@ router.get('/mentor/pending-requests', async (req, res) => {
 });
 
 // POST /api/mentor-sessions/create-demo
-router.post('/sessions/create-demo', async (req, res) => {
+const createDemoSessionsHandler = async (req: any, res: any) => {
   try {
     const { mentorId } = req.query as { mentorId?: string };
     if (!mentorId) {
@@ -425,7 +426,12 @@ router.post('/sessions/create-demo', async (req, res) => {
     console.error('Error creating demo sessions:', error);
     res.status(500).json({ message: 'An error occurred on the server.' });
   }
-});
+};
+
+// Backend canonical route (existing)
+router.post('/sessions/create-demo', createDemoSessionsHandler);
+// Alias to match frontend: POST /api/mentor-sessions/create-demo?mentorId=...
+router.post('/mentor-sessions/create-demo', createDemoSessionsHandler);
 
 // GET /api/mentor-sessions
 router.get('/mentor-sessions', async (req, res) => {
@@ -930,6 +936,50 @@ router.get('/mentor-mentees/:id', async (req, res) => {
     res.json(mentee);
   } catch (error) {
     console.error('Error fetching mentee details:', error);
+    res.status(500).json({ message: 'An error occurred on the server.' });
+  }
+});
+
+// POST /api/mentor-mentees/:id/message - Send a message from mentor to mentee
+router.post('/mentor-mentees/:id/message', async (req, res) => {
+  try {
+    const { id } = req.params; // menteeId (studentId)
+    const { mentorId, message } = req.body as { mentorId?: string; message?: string };
+
+    if (!mentorId) {
+      return res.status(400).json({ message: 'mentorId is required' });
+    }
+    if (!id) {
+      return res.status(400).json({ message: 'mentee id is required' });
+    }
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ message: 'message is required' });
+    }
+
+    // Ensure this mentor has sessions with this mentee (basic authorization)
+    const hasRelationship = await MentorSession.exists({
+      mentorId,
+      $or: [{ studentId: id }, { studentName: { $regex: id, $options: 'i' } }],
+    });
+    if (!hasRelationship) {
+      return res.status(404).json({ message: 'Mentee not found for this mentor' });
+    }
+
+    const saved = await MentorMenteeMessage.create({
+      mentorId,
+      menteeId: id,
+      message: message.trim(),
+    });
+
+    res.status(201).json({
+      id: saved._id,
+      mentorId: saved.mentorId,
+      menteeId: saved.menteeId,
+      message: saved.message,
+      createdAt: saved.createdAt,
+    });
+  } catch (error) {
+    console.error('Error sending mentor->mentee message:', error);
     res.status(500).json({ message: 'An error occurred on the server.' });
   }
 });
