@@ -79,5 +79,65 @@ router.post('/join', async (req, res) => {
   }
 });
 
+// POST /api/session/recording/start
+router.post('/recording/start', async (req, res) => {
+  try {
+    const { sessionId, userId } = req.body as { sessionId?: string; userId?: string };
+    if (!sessionId || !userId) {
+      return res.status(400).json({ message: 'sessionId and userId are required' });
+    }
+
+    const session = await MentorSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    const isMentor = session.mentorId === userId;
+    if (!isMentor) {
+      return res.status(403).json({ message: 'Only the mentor can start recording.' });
+    }
+
+    // Recording provider integration is out of scope; expose a stable endpoint for the frontend.
+    // If a recordingUrl already exists, keep it as-is.
+    res.json({
+      sessionId: String(session._id),
+      recording: 'started',
+      recordingUrl: session.recordingUrl || null,
+    });
+  } catch (error: any) {
+    console.error('Error starting recording:', error);
+    res.status(500).json({ message: error.message || 'An error occurred while starting recording.' });
+  }
+});
+
+// POST /api/session/recording/stop
+router.post('/recording/stop', async (req, res) => {
+  try {
+    const { sessionId, userId } = req.body as { sessionId?: string; userId?: string };
+    if (!sessionId || !userId) {
+      return res.status(400).json({ message: 'sessionId and userId are required' });
+    }
+
+    const session = await MentorSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    const isMentor = session.mentorId === userId;
+    if (!isMentor) {
+      return res.status(403).json({ message: 'Only the mentor can stop recording.' });
+    }
+
+    res.json({
+      sessionId: String(session._id),
+      recording: 'stopped',
+      recordingUrl: session.recordingUrl || null,
+    });
+  } catch (error: any) {
+    console.error('Error stopping recording:', error);
+    res.status(500).json({ message: error.message || 'An error occurred while stopping recording.' });
+  }
+});
+
 export default router;
 
