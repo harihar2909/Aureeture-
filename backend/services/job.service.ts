@@ -54,6 +54,7 @@ export const applyToJob = async (userId: string, jobId: string, applicationData:
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const job = await Job.findById(jobId);
     if (!job) {
@@ -63,7 +64,7 @@ export const applyToJob = async (userId: string, jobId: string, applicationData:
     // Check if user already applied
     const existingApplication = await JobApplication.findOne({
         jobId,
-        applicantId: user._id
+        applicantId: userObjectId
     });
 
     if (existingApplication) {
@@ -72,12 +73,12 @@ export const applyToJob = async (userId: string, jobId: string, applicationData:
 
     const application = await JobApplication.create({
         jobId,
-        applicantId: user._id,
+        applicantId: userObjectId,
         ...applicationData
     });
 
     // Add application to job
-    job.applications.push(application._id);
+    job.applications.push((application as any)._id);
     await job.save();
 
     return application.populate('jobId', 'title company');
@@ -88,8 +89,9 @@ export const getUserApplications = async (userId: string) => {
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
-    const applications = await JobApplication.find({ applicantId: user._id })
+    const applications = await JobApplication.find({ applicantId: userObjectId })
         .populate('jobId', 'title company location workModel')
         .sort({ appliedAt: -1 });
 

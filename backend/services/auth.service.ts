@@ -33,10 +33,11 @@ export const verifyUserAndGetProfileStatus = async (token: string): Promise<Prof
     }
 
     // Check if a profile exists
-    const profile = await Profile.findOne({ userId: localUser._id });
+    const localUserId = (localUser as any)._id;
+    const profile = await Profile.findOne({ userId: localUserId });
 
     return {
-        userId: localUser._id.toString(),
+        userId: String(localUserId),
         profileExists: !!profile,
         onboardingComplete: profile?.onboardingComplete || false,
     };

@@ -5,6 +5,21 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001';
 
+export type AuthTokenProvider = () => Promise<string | null>;
+let authTokenProvider: AuthTokenProvider | null = null;
+
+/**
+ * Allows the app (Clerk-aware client component) to provide a token getter.
+ * This keeps `apiClient` usable from any file without importing Clerk hooks here.
+ */
+export function setAuthTokenProvider(provider: AuthTokenProvider) {
+  authTokenProvider = provider;
+}
+
+export function clearAuthTokenProvider() {
+  authTokenProvider = null;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -33,7 +48,7 @@ class ApiClient {
 
     // Add auth token if available (from Clerk)
     const token = typeof window !== 'undefined' 
-      ? await this.getAuthToken() 
+      ? await this.getAuthToken()
       : null;
     
     if (token) {
@@ -51,13 +66,19 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const message =
+          // backend patterns
+          (data?.error?.message as string | undefined) ||
+          (data?.message as string | undefined) ||
+          // fallback
+          `HTTP ${response.status}: ${response.statusText}`;
         return {
           success: false,
           error: {
-            message: data.message || `HTTP ${response.status}: ${response.statusText}`,
+            message,
             code: String(response.status),
           },
         };
@@ -65,7 +86,7 @@ class ApiClient {
 
       return {
         success: true,
-        data: data.data || data,
+        data: (data?.data ?? data) as T,
       };
     } catch (error: any) {
       return {
@@ -79,9 +100,12 @@ class ApiClient {
   }
 
   private async getAuthToken(): Promise<string | null> {
-    // In a real app, you'd get this from Clerk's session
-    // For now, return null - Clerk middleware handles auth on backend
-    return null;
+    if (!authTokenProvider) return null;
+    try {
+      return await authTokenProvider();
+    } catch {
+      return null;
+    }
   }
 
   // GET request
@@ -136,11 +160,61 @@ export const api = {
     get: () => apiClient.get('/api/profile'),
     create: (data: any) => apiClient.post('/api/profile', data),
     update: (data: any) => apiClient.put('/api/profile', data),
+    student: {
+      get: () => apiClient.get('/api/profile/student'),
+      update: (data: any) => apiClient.put('/api/profile/student', data),
+    },
   },
 
   // Auth
   auth: {
     verify: (token: string) => apiClient.post('/api/auth/verify', { token }),
+  },
+
+  // Onboarding
+  onboarding: {
+    status: () => apiClient.get('/api/onboarding/status'),
+    step: (step: 'personal' | 'goal' | 'review', payload: any) =>
+      apiClient.post('/api/onboarding/step', { step, payload }),
+  },
+
+  // Jobs
+  jobs: {
+    list: (params?: Record<string, string>) => apiClient.get('/api/jobs', params),
+    getById: (id: string) => apiClient.get(`/api/jobs/${id}`),
+    apply: (id: string, data?: { coverLetter?: string; resumeUrl?: string }) =>
+      apiClient.post(`/api/jobs/${id}/apply`, data),
+    myApplications: () => apiClient.get('/api/jobs/applications/me'),
+  },
+
+  // Projects
+  projects: {
+    list: (params?: Record<string, string>) => apiClient.get('/api/projects', params),
+    getById: (id: string) => apiClient.get(`/api/projects/${id}`),
+    join: (id: string) => apiClient.post(`/api/projects/${id}/join`),
+    mine: () => apiClient.get('/api/projects/me'),
+  },
+
+  // People / Connections
+  people: {
+    list: (params?: Record<string, string>) => apiClient.get('/api/people', params),
+    connections: () => apiClient.get('/api/people/connections'),
+    connect: (data: { recipientId: string; message?: string }) => apiClient.post('/api/people/connect', data),
+    respond: (connectionId: string, status: 'accepted' | 'declined') =>
+      apiClient.put(`/api/people/connections/${connectionId}`, { status }),
+  },
+
+  // Mentors directory (students browse)
+  mentors: {
+    list: () => apiClient.get('/api/mentors'),
+  },
+
+  // Mentor dashboards
+  mentor: {
+    stats: (mentorId: string) => apiClient.get('/api/mentor/stats', { mentorId }),
+    pendingRequests: (mentorId: string) => apiClient.get('/api/mentor/pending-requests', { mentorId }),
+    earnings: (mentorId: string, period: 'all' | 'this_month' | 'last_90_days' = 'all') =>
+      apiClient.get('/api/mentor/earnings', { mentorId, period }),
   },
 
   // Mentor Sessions
@@ -160,6 +234,7 @@ export const api = {
       apiClient.post(`/api/mentor-sessions/${id}/complete?mentorId=${mentorId}`),
     createDemo: (mentorId: string) =>
       apiClient.post(`/api/mentor-sessions/create-demo?mentorId=${mentorId}`),
+    confirmPayment: (data: any) => apiClient.post('/api/mentor-sessions/confirm-payment', data),
   },
 
   // Mentor Mentees
@@ -168,6 +243,10 @@ export const api = {
       apiClient.get('/api/mentor-mentees', { mentorId }),
     getById: (id: string, mentorId: string) =>
       apiClient.get(`/api/mentor-mentees/${id}`, { mentorId }),
+    add: (data: { mentorId: string; name: string; email: string; goal: string; status?: string }) =>
+      apiClient.post('/api/mentor-mentees', data),
+    sendMessage: (menteeId: string, data: { mentorId: string; message: string }) =>
+      apiClient.post(`/api/mentor-mentees/${menteeId}/message`, data),
   },
 
   // Mentor Availability
@@ -180,10 +259,31 @@ export const api = {
       }),
   },
 
+  // Student Sessions
+  studentSessions: {
+    getAll: (studentId: string, scope?: 'all' | 'upcoming' | 'past') =>
+      apiClient.get('/api/student-sessions', { studentId, scope: scope || 'all' }),
+    getById: (id: string, studentId: string) =>
+      apiClient.get(`/api/student-sessions/${id}`, { studentId }),
+  },
+
   // Session Join
   session: {
     join: (sessionId: string, userId: string) =>
       apiClient.post('/api/session/join', { sessionId, userId }),
+  },
+
+  // CARO
+  caro: {
+    history: () => apiClient.get('/api/caro/history'),
+    message: (data: { message: string; sessionId: string; context?: any }) =>
+      apiClient.post('/api/caro/message', data),
+  },
+
+  // Recommendations
+  recommendations: {
+    get: (filters?: { careerGoal?: string; institution?: string }) =>
+      apiClient.post('/api/recommendations', filters || {}),
   },
 
   // Contact Forms

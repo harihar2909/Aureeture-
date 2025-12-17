@@ -1,20 +1,31 @@
 "use client";
 
-import React, { FC, ReactNode, useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { FC, ReactNode, useMemo, useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  Rocket, Users, Clock, Search, Code, X, Award, IndianRupee, 
-  CheckSquare, Brain, Briefcase, Filter, LayoutGrid, List, ChevronDown, Loader2 
-} from 'lucide-react';
+import {
+  Users,
+  Clock,
+  Search,
+  Brain,
+  Filter,
+  LayoutGrid,
+  List,
+  ChevronDown,
+  Loader2,
+  CheckSquare,
+  X,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUser } from "@clerk/nextjs";
+import { api } from "@/lib/api";
 
 // --- WIDGET WRAPPER COMPONENT ---
 const Widget: FC<{ children: ReactNode; className?: string }> = ({
@@ -33,153 +44,146 @@ const Widget: FC<{ children: ReactNode; className?: string }> = ({
 );
 
 // --- TYPES ---
-type BaseProject = {
-  id: number;
+
+type ProjectDifficulty = "Beginner" | "Intermediate" | "Advanced";
+
+type Project = {
+  id: string;
   title: string;
   company: string;
   duration: string;
   technologies: string[];
   description: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
-  aboutCompany: string;
+  difficulty: ProjectDifficulty;
+  requirements: string[];
   deliverables: string[];
-  learningOutcomes: string[];
+  status: string;
+  participantsCount: number;
+  maxParticipants: number;
 };
 
-type InternshipProject = BaseProject & { type: 'Internship Project'; stipend: string; ppo: boolean; };
-type LiveProject = BaseProject & { type: 'Live Project'; budget: number; };
-type DesignGig = BaseProject & { type: 'Design Gig'; budget: number; };
-type Hackathon = BaseProject & { type: 'Hackathon'; prizePool: number; };
-
-type Project = InternshipProject | LiveProject | DesignGig | Hackathon;
-
-// --- DATA ---
-const projectsData: Project[] = [
-  { 
-    id: 5, type: "Internship Project", title: "Aureeture Campus Ambassador Portal", company: "Aureeture", 
-    duration: "10 weeks", technologies: ["Next.js", "Tailwind CSS", "Supabase"], 
-    description: "Build a portal for managing the campus ambassador program, including tasks and leaderboards.", 
-    difficulty: "Intermediate", stipend: "₹15,000 / month", ppo: true,
-    aboutCompany: "Aureeture is India’s first GenAI-powered entrepreneurial platform for students, blending education with innovation.",
-    deliverables: ["Functional user authentication", "Task submission module", "Real-time leaderboard"],
-    learningOutcomes: ["Full-stack development with Next.js", "Database management with Supabase", "Project management skills"]
+// Fallback demo data (used when backend has no data / unreachable)
+const fallbackProjects: Project[] = [
+  {
+    id: "demo-1",
+    title: "Aureeture Campus Ambassador Portal",
+    company: "Aureeture",
+    duration: "10 weeks",
+    technologies: ["Next.js", "Tailwind CSS", "Supabase"],
+    description:
+      "Build a portal for managing the campus ambassador program, including tasks and leaderboards.",
+    difficulty: "Intermediate",
+    requirements: ["Basic React knowledge", "Comfort with APIs"],
+    deliverables: [
+      "Functional user authentication",
+      "Task submission module",
+      "Real-time leaderboard",
+    ],
+    status: "Open",
+    participantsCount: 0,
+    maxParticipants: 10,
   },
-  { 
-    id: 2, type: "Live Project", title: "AI-Powered Content Summarizer", company: "InnovateAI", 
-    duration: "6 weeks", technologies: ["Python", "Hugging Face", "FastAPI"], 
-    description: "Build a web service that summarizes long articles and documents using transformer models.", 
-    difficulty: "Advanced", budget: 40000,
-    aboutCompany: "InnovateAI is a research lab focused on making cutting-edge AI accessible to businesses.",
-    deliverables: ["REST API for text summarization", "Deployment script (Docker)", "Technical documentation"],
-    learningOutcomes: ["NLP with Hugging Face", "API development in Python", "Model deployment"]
-  },
-  { 
-    id: 3, type: "Design Gig", title: "Fintech Landing Page Design", company: "PaySphere", 
-    duration: "2 weeks", technologies: ["Figma", "UI/UX", "Webflow"], 
-    description: "Design a high-converting, modern landing page for a new fintech startup.", 
-    difficulty: "Beginner", budget: 25000,
-    aboutCompany: "PaySphere aims to simplify cross-border payments for small businesses in India.",
-    deliverables: ["High-fidelity Figma mockups", "Clickable prototype", "Style guide"],
-    learningOutcomes: ["UI/UX design principles", "Conversion-centered design", "Figma proficiency"]
-  },
-  { 
-    id: 6, type: "Hackathon", title: "Sustainable Tech Hackathon", company: "GreenCode", 
-    duration: "48 hours", technologies: ["Any", "Cloud", "APIs"], 
-    description: "Compete to build an innovative solution for environmental sustainability.", 
-    difficulty: "Advanced", prizePool: 100000,
-    aboutCompany: "GreenCode is a non-profit organization promoting technology for environmental good.",
-    deliverables: ["Working prototype", "5-minute video presentation", "Source code repository"],
-    learningOutcomes: ["Rapid prototyping", "Team collaboration", "Pitching an idea under pressure"]
+  {
+    id: "demo-2",
+    title: "AI-Powered Content Summarizer",
+    company: "InnovateAI",
+    duration: "6 weeks",
+    technologies: ["Python", "Hugging Face", "FastAPI"],
+    description:
+      "Build a web service that summarizes long articles and documents using transformer models.",
+    difficulty: "Advanced",
+    requirements: ["Python", "REST APIs", "NLP basics"],
+    deliverables: ["Summarization API", "Docker deployment", "Docs"],
+    status: "Open",
+    participantsCount: 0,
+    maxParticipants: 5,
   },
 ];
 
 // --- MODAL COMPONENT ---
-const ProjectDetailModal: FC<{ project: Project | null; onClose: () => void }> = ({
-  project,
-  onClose,
-}) => {
+const ProjectDetailModal: FC<{
+  project: Project | null;
+  onClose: () => void;
+}> = ({ project, onClose }) => {
+  const { isLoaded, isSignedIn } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Reset state whenever a new project is opened/closed
   useEffect(() => {
     if (!project) {
       setIsSubmitting(false);
-      setHasApplied(false);
+      setHasJoined(false);
+      setError(null);
     }
   }, [project]);
 
-  const handlePrimaryAction = async () => {
+  const handleJoin = async () => {
     if (!project) return;
+    setIsSubmitting(true);
+    setError(null);
     try {
-      setIsSubmitting(true);
-      // Placeholder for real API integration
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setHasApplied(true);
+      if (!isLoaded || !isSignedIn) {
+        throw new Error("Please sign in to join a project.");
+      }
+      // Demo projects cannot be joined on the backend
+      if (project.id.startsWith("demo-")) {
+        setHasJoined(true);
+        return;
+      }
+      const result = await api.projects.join(project.id);
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to join project");
+      }
+      setHasJoined(true);
+    } catch (e: any) {
+      setError(e?.message || "Failed to join project");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getCtaLabel = () => {
-    if (!project) return "";
-    if (project.type === "Internship Project") return "Apply for Internship";
-    if (project.type === "Live Project" || project.type === "Design Gig")
-      return "Submit Proposal";
-    if (project.type === "Hackathon") return "Register for Hackathon";
-    return "Continue";
-  };
+  if (!project) return null;
 
   return (
     <AnimatePresence>
-      {project && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={onClose}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
+          onClick={(e) => e.stopPropagation()}
         >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <Badge variant="outline">{project.type}</Badge>
-                  <h2 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                    {project.title}
-                  </h2>
-                  <p className="font-semibold text-zinc-500">{project.company}</p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                  <X className="h-6 w-6" />
-                </Button>
+          <div className="p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Badge variant="outline">Real-Time Project</Badge>
+                <h2 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+                  {project.title}
+                </h2>
+                <p className="font-semibold text-zinc-500">{project.company}</p>
               </div>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
 
-              <div className="mt-6 grid gap-8 md:grid-cols-3">
-                <div className="md:col-span-2 space-y-6">
-                  <div>
-                    <h3 className="mb-2 text-lg font-semibold">
-                      About the Company
-                    </h3>
-                    <p className="text-sm text-zinc-500">
-                      {project.aboutCompany}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="mb-2 text-lg font-semibold">
-                      Project Description
-                    </h3>
-                    <p className="text-sm text-zinc-500">
-                      {project.description}
-                    </p>
-                  </div>
+            <div className="mt-6 grid gap-8 md:grid-cols-3">
+              <div className="md:col-span-2 space-y-6">
+                <div>
+                  <h3 className="mb-2 text-lg font-semibold">Project Description</h3>
+                  <p className="text-sm text-zinc-500">{project.description}</p>
+                </div>
+
+                {project.deliverables.length > 0 && (
                   <div>
                     <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold">
                       <CheckSquare size={20} /> Key Deliverables
@@ -190,96 +194,82 @@ const ProjectDetailModal: FC<{ project: Project | null; onClose: () => void }> =
                       ))}
                     </ul>
                   </div>
+                )}
+
+                {project.requirements.length > 0 && (
                   <div>
                     <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold">
-                      <Brain size={20} /> Learning Outcomes
+                      <Brain size={20} /> Requirements
                     </h3>
                     <ul className="list-inside list-disc space-y-1 text-sm text-zinc-500">
-                      {project.learningOutcomes.map((item) => (
+                      {project.requirements.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
                   </div>
-                </div>
-                <div className="space-y-6">
-                  <Widget className="bg-zinc-50 p-4 dark:bg-zinc-900/50">
-                    {project.type === "Internship Project" && (
-                      <div className="space-y-3">
-                        <div className="text-center text-lg font-bold">
-                          Internship Details
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <IndianRupee size={18} /> Stipend:{" "}
-                          <span className="font-semibold">
-                            {project.stipend}
-                          </span>
-                        </div>
-                        {project.ppo && (
-                          <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                            <Award size={18} />
-                            PPO Opportunity
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {(project.type === "Live Project" ||
-                      project.type === "Design Gig") && (
-                      <div className="space-y-2 text-center">
-                        <div className="text-lg font-bold">Project Budget</div>
-                        <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                          ₹{project.budget.toLocaleString("en-IN")}
-                        </div>
-                      </div>
-                    )}
-                    {project.type === "Hackathon" && (
-                      <div className="space-y-2 text-center">
-                        <div className="text-lg font-bold">Prize Pool</div>
-                        <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-                          ₹{project.prizePool.toLocaleString("en-IN")}
-                        </div>
-                      </div>
-                    )}
-                  </Widget>
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Tech Stack</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {project.technologies.map((tech) => (
-                        <Badge key={tech} variant="secondary">
-                          {tech}
-                        </Badge>
-                      ))}
+                )}
+              </div>
+
+              <div className="space-y-6">
+                <Widget className="bg-zinc-50 p-4 dark:bg-zinc-900/50">
+                  <div className="space-y-2 text-center">
+                    <div className="text-lg font-bold">Status</div>
+                    <div className="text-sm text-zinc-700 dark:text-zinc-200">
+                      {project.status}
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      {project.participantsCount}/{project.maxParticipants} participants
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Info</h4>
-                    <div className="space-y-2 text-sm text-zinc-500">
-                      <div className="flex items-center gap-2">
-                        <Clock size={16} />
-                        {project.duration}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users size={16} />
-                        Open for Applications
-                      </div>
+                </Widget>
+
+                <div className="space-y-3">
+                  <h4 className="font-semibold">Tech Stack</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {project.technologies.map((tech) => (
+                      <Badge key={tech} variant="secondary">
+                        {tech}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-semibold">Info</h4>
+                  <div className="space-y-2 text-sm text-zinc-500">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} />
+                      {project.duration}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users size={16} />
+                      Open for applications
                     </div>
                   </div>
-                  <Button
-                    className="w-full font-bold"
-                    type="button"
-                    disabled={isSubmitting || hasApplied}
-                    onClick={handlePrimaryAction}
-                  >
-                    {isSubmitting && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {hasApplied ? "Application submitted" : getCtaLabel()}
-                  </Button>
                 </div>
+
+                {error && (
+                  <p className="text-sm text-red-500 text-center">{error}</p>
+                )}
+
+                <Button
+                  className="w-full font-bold"
+                  type="button"
+                  disabled={isSubmitting || hasJoined || project.status !== "Open"}
+                  onClick={handleJoin}
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {hasJoined
+                    ? "Joined"
+                    : project.status !== "Open"
+                      ? "Not open"
+                      : "Join Project"}
+                </Button>
               </div>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 };
@@ -287,19 +277,64 @@ const ProjectDetailModal: FC<{ project: Project | null; onClose: () => void }> =
 // --- MAIN PAGE COMPONENT ---
 export default function StudentProjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<Project['type'] | 'All'>('All');
+  const [filterDifficulty, setFilterDifficulty] = useState<
+    ProjectDifficulty | "All"
+  >("All");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [projects, setProjects] = useState<Project[]>(fallbackProjects);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const result = await api.projects.list({ page: "1", limit: "50" });
+        if (!result.success) throw new Error(result.error?.message);
+
+        const payload = result.data as any;
+        const apiProjects = (payload?.projects || []).map((p: any) => {
+          return {
+            id: String(p._id),
+            title: p.title,
+            company: p.company,
+            duration: p.duration,
+            technologies: p.technologies || [],
+            description: p.description,
+            difficulty: p.difficulty,
+            requirements: p.requirements || [],
+            deliverables: p.deliverables || [],
+            status: p.status,
+            participantsCount: Array.isArray(p.participants)
+              ? p.participants.length
+              : 0,
+            maxParticipants: p.maxParticipants ?? 0,
+          } as Project;
+        });
+
+        setProjects(apiProjects.length > 0 ? apiProjects : fallbackProjects);
+      } catch {
+        setProjects(fallbackProjects);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
 
   const filteredProjects = useMemo(() => {
-    return projectsData
-      .filter(project => filterType === 'All' || project.type === filterType)
-      .filter(project => project.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [searchTerm, filterType]);
+    return projects
+      .filter(
+        (project) =>
+          filterDifficulty === "All" || project.difficulty === filterDifficulty
+      )
+      .filter((project) =>
+        project.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [searchTerm, filterDifficulty, projects]);
 
-  const projectTypes: (Project['type'] | 'All')[] = ['All', 'Internship Project', 'Live Project', 'Hackathon', 'Design Gig'];
-
-  const getDifficultyBadge = (difficulty: Project['difficulty']) => {
+  const getDifficultyBadge = (difficulty: ProjectDifficulty) => {
     return "bg-zinc-900/5 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700";
   };
 
@@ -315,7 +350,7 @@ export default function StudentProjectsPage() {
 
       <main className="space-y-6">
         <Widget className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <Input
@@ -333,19 +368,18 @@ export default function StudentProjectsPage() {
                     className="h-9 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 gap-2"
                   >
                     <Filter size={14} />
-                    {filterType === "All" ? "All" : filterType}
+                    {filterDifficulty}
                     <ChevronDown size={14} className="opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  {projectTypes.map((type) => (
-                    <DropdownMenuItem
-                      key={type}
-                      onClick={() => setFilterType(type)}
-                    >
-                      {type}
-                    </DropdownMenuItem>
-                  ))}
+                  {(["All", "Beginner", "Intermediate", "Advanced"] as const).map(
+                    (d) => (
+                      <DropdownMenuItem key={d} onClick={() => setFilterDifficulty(d as any)}>
+                        {d}
+                      </DropdownMenuItem>
+                    )
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -376,66 +410,102 @@ export default function StudentProjectsPage() {
         </Widget>
 
         <section>
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                : "flex flex-col gap-4"
-            }
-          >
-            <AnimatePresence>
-              {filteredProjects.map(project => (
-                <motion.div key={project.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.3 }}>
-                  <Widget className="h-full flex flex-col p-6">
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                          {project.company}
-                        </p>
-                        <Badge variant="outline" className="text-xs font-normal">
-                          {project.type}
-                        </Badge>
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2 text-zinc-900 dark:text-zinc-50">
-                        {project.title}
-                      </h3>
-                      <p className="text-sm text-zinc-500 mb-4 line-clamp-3">
-                        {project.description}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {project.technologies.map((tech) => (
-                          <Badge
-                            key={tech}
-                            variant="outline"
-                            className="border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
-                          >
-                            {tech}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="flex items-center gap-2 text-sm text-zinc-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Loading projects...
+              </div>
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  : "flex flex-col gap-4"
+              }
+            >
+              <AnimatePresence>
+                {filteredProjects.map((project) => (
+                  <motion.div
+                    key={project.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Widget className="h-full flex flex-col p-6">
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                            {project.company}
+                          </p>
+                          <Badge variant="outline" className="text-xs font-normal">
+                            {project.status}
                           </Badge>
-                        ))}
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 text-zinc-900 dark:text-zinc-50">
+                          {project.title}
+                        </h3>
+                        <p className="text-sm text-zinc-500 mb-4 line-clamp-3">
+                          {project.description}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {project.technologies.map((tech) => (
+                            <Badge
+                              key={tech}
+                              variant="outline"
+                              className="border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
+                            >
+                              {tech}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                      <div className="flex justify-between items-center text-sm text-zinc-500 mb-4">
-                        <span className="flex items-center gap-1.5"><Clock size={16}/>{project.duration}</span>
-                        <Badge variant="outline" className={getDifficultyBadge(project.difficulty)}>{project.difficulty}</Badge>
+                      <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                        <div className="flex justify-between items-center text-sm text-zinc-500 mb-4">
+                          <span className="flex items-center gap-1.5">
+                            <Clock size={16} />
+                            {project.duration}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={getDifficultyBadge(project.difficulty)}
+                          >
+                            {project.difficulty}
+                          </Badge>
+                        </div>
+                        <Button className="w-full" onClick={() => setSelectedProject(project)}>
+                          View Project
+                        </Button>
                       </div>
-                      <Button className="w-full" onClick={() => setSelectedProject(project)}>View Project</Button>
-                    </div>
-                  </Widget>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          {filteredProjects.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
-              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">No projects found</p>
+                    </Widget>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {!loading && filteredProjects.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800"
+            >
+              <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                No projects found
+              </p>
               <p className="text-zinc-500">Try adjusting your search or filter criteria.</p>
             </motion.div>
           )}
         </section>
       </main>
-      
-      <ProjectDetailModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+
+      <ProjectDetailModal
+        project={selectedProject}
+        onClose={() => setSelectedProject(null)}
+      />
     </div>
   );
 }

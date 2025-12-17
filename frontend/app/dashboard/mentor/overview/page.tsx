@@ -27,8 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-
-const ONBOARDING_KEY = "aureeture_mentor_onboarding_complete";
+import { api } from "@/lib/api";
 
 // --- Types ---
 
@@ -177,6 +176,7 @@ const MentorOverviewPage: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [isVerified] = useState(false); // placeholder until backend verification is wired
   const [isCopyingLink, setIsCopyingLink] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const [todaySessions, setTodaySessions] = useState<MentorSession[]>([]);
   const [loadingToday, setLoadingToday] = useState(true);
   const [todayError, setTodayError] = useState<string | null>(null);
@@ -209,15 +209,22 @@ const MentorOverviewPage: React.FC = () => {
     [isLoaded, isSignedIn, user?.id]
   );
 
-  // Gate: if onboarding not complete, push back to onboarding wizard
+  // Gate: if onboarding not complete, push back to onboarding wizard (backend source of truth)
   useEffect(() => {
-    const hasCompletedOnboarding =
-      typeof window !== "undefined" &&
-      window.localStorage.getItem(ONBOARDING_KEY) === "true";
-    if (!hasCompletedOnboarding) {
-      router.replace("/dashboard/mentor/onboarding");
-    }
-  }, [router]);
+    const check = async () => {
+      if (!canLoadSessions) return;
+      const result = await api.onboarding.status();
+      if (!result.success) {
+        // If status cannot be fetched, don't hard-block the dashboard.
+        setOnboardingComplete(true);
+        return;
+      }
+      const complete = Boolean((result.data as any)?.onboardingComplete);
+      setOnboardingComplete(complete);
+      if (!complete) router.replace("/dashboard/mentor/onboarding");
+    };
+    check();
+  }, [canLoadSessions, router]);
 
   // Load dashboard stats
   useEffect(() => {

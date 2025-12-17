@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,8 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { MentorProfile, MentorWeeklySlot, MentorOverrideSlot, Weekday } from "@/types/mentor";
-
-const ONBOARDING_KEY = "aureeture_mentor_onboarding_complete";
+import { api } from "@/lib/api";
 
 const SUGGESTED_TAGS = [
   "System Design",
@@ -85,6 +85,7 @@ function createEmptyProfile(): MentorProfile {
 
 export default function MentorOnboardingPage() {
   const router = useRouter();
+  const { user, isLoaded, isSignedIn } = useUser();
   const [step, setStep] = useState<StepId>("BASIC");
   const [profile, setProfile] = useState<MentorProfile>(createEmptyProfile);
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
@@ -119,15 +120,34 @@ export default function MentorOnboardingPage() {
 
   const handleComplete = async () => {
     setIsSaving(true);
+    try {
+      if (!isLoaded || !isSignedIn || !user?.id) {
+        throw new Error("Please sign in to complete onboarding.");
+      }
 
-    // Placeholder for real backend call.
-    await new Promise((resolve) => setTimeout(resolve, 700));
+      // Persist core mentor profile info to the backend Profile document.
+      // This is also used by `/api/onboarding/status` as the source of truth.
+      const result = await api.profile.update({
+        currentRole: profile.currentRole,
+        currentCompany: profile.company,
+        joinDate: undefined,
+        personalInfo: {
+          linkedIn: profile.linkedinUrl,
+        },
+        skills: profile.specializationTags,
+        onboardingComplete: true,
+      });
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ONBOARDING_KEY, "true");
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to save onboarding");
+      }
+
+      router.replace("/dashboard/mentor/overview");
+    } catch (e: any) {
+      alert(e?.message || "Failed to complete onboarding. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
-    router.replace("/dashboard/mentor/overview");
   };
 
   return (
