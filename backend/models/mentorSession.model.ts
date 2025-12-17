@@ -1,29 +1,39 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types } from 'mongoose';
 
-export type SessionStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled' | 'reschedule_requested';
+export type SessionStatus =
+  | 'scheduled'
+  | 'ongoing'
+  | 'completed'
+  | 'cancelled'
+  | 'reschedule_requested';
+
 export type PaymentStatus = 'pending' | 'paid' | 'refunded';
 export type BookingType = 'paid' | 'free';
 
 export interface IMentorSession extends Document {
-  mentorId: string; // Clerk userId for the mentor
-  studentId?: string; // Clerk userId for the student
+  _id: Types.ObjectId; // Explicitly defined to prevent type errors
+  mentorId: string;
+  studentId?: string;
   studentName: string;
   studentEmail?: string;
   title: string;
   description?: string;
   startTime: Date;
   endTime: Date;
-  startedAt?: Date; // When session actually started (mentor joined)
-  endedAt?: Date; // When session actually ended
+  startedAt?: Date;
+  endedAt?: Date;
   durationMinutes: number;
   status: SessionStatus;
   paymentStatus: PaymentStatus;
   bookingType: BookingType;
-  meetingLink?: string;
-  agoraChannel?: string; // Agora channel name for video sessions
+
+  /** ✅ NOW REQUIRED */
+  meetingLink: string;
+
+  agoraChannel?: string;
   recordingUrl?: string;
   notes?: string;
-  // Reschedule tracking
+
   rescheduleCount: number;
   rescheduleRequests: Array<{
     requestedAt: Date;
@@ -33,13 +43,14 @@ export interface IMentorSession extends Document {
     newEndTime?: Date;
     status: 'pending' | 'approved' | 'rejected';
   }>;
-  // Calendly integration
+
   calendlyEventUri?: string;
   calendlyInviteeUri?: string;
-  // Payment details
+
   amount?: number;
   currency?: string;
   paymentId?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,38 +68,59 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     startedAt: { type: Date },
     endedAt: { type: Date },
     durationMinutes: { type: Number, required: true },
+
     status: {
       type: String,
-      enum: ['scheduled', 'ongoing', 'completed', 'cancelled', 'reschedule_requested'],
+      enum: [
+        'scheduled',
+        'ongoing',
+        'completed',
+        'cancelled',
+        'reschedule_requested',
+      ],
       default: 'scheduled',
       index: true,
     },
+
     paymentStatus: {
       type: String,
       enum: ['pending', 'paid', 'refunded'],
       default: 'pending',
       index: true,
     },
+
     bookingType: {
       type: String,
       enum: ['paid', 'free'],
       default: 'paid',
     },
-    meetingLink: { type: String },
+
+    /** ✅ REQUIRED AT DB LEVEL */
+    meetingLink: { type: String, required: true },
+
     agoraChannel: { type: String, index: true },
     recordingUrl: { type: String },
     notes: { type: String },
+
     rescheduleCount: { type: Number, default: 0 },
-    rescheduleRequests: [{
-      requestedAt: { type: Date, default: Date.now },
-      requestedBy: { type: String, enum: ['mentor', 'student'] },
-      reason: { type: String },
-      newStartTime: { type: Date },
-      newEndTime: { type: Date },
-      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    }],
+    rescheduleRequests: [
+      {
+        requestedAt: { type: Date, default: Date.now },
+        requestedBy: { type: String, enum: ['mentor', 'student'] },
+        reason: { type: String },
+        newStartTime: { type: Date },
+        newEndTime: { type: Date },
+        status: {
+          type: String,
+          enum: ['pending', 'approved', 'rejected'],
+          default: 'pending',
+        },
+      },
+    ],
+
     calendlyEventUri: { type: String },
     calendlyInviteeUri: { type: String },
+
     amount: { type: Number },
     currency: { type: String, default: 'INR' },
     paymentId: { type: String },
@@ -97,12 +129,3 @@ const MentorSessionSchema = new Schema<IMentorSession>(
 );
 
 export default model<IMentorSession>('MentorSession', MentorSessionSchema);
-
-
-
-
-
-
-
-
-

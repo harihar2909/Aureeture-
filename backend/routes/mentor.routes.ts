@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import MentorSession from '../models/mentorSession.model';
 import MentorAvailability from '../models/mentorAvailability.model';
 import { generateAgoraToken } from '../services/agoraToken.service';
 import { sendEmail, generateSessionConfirmationEmail } from '../services/email.service';
+import MentorMenteeMessage from '../models/mentorMenteeMessage.model';
 
 const router = Router();
 
@@ -222,7 +223,7 @@ const ensureDemoSessionsForMentor = async (mentorId: string, forceCreate: boolea
 };
 
 // GET /api/mentor/stats - Get mentor dashboard statistics
-router.get('/mentor/stats', async (req, res) => {
+router.get('/mentor/stats', async (req: Request, res: Response) => {
   try {
     const { mentorId } = req.query as { mentorId?: string };
     if (!mentorId) {
@@ -329,7 +330,7 @@ router.get('/mentor/stats', async (req, res) => {
 });
 
 // GET /api/mentor/pending-requests - Get pending requests and actions
-router.get('/mentor/pending-requests', async (req, res) => {
+router.get('/mentor/pending-requests', async (req: Request, res: Response) => {
   try {
     const { mentorId } = req.query as { mentorId?: string };
     if (!mentorId) {
@@ -366,7 +367,7 @@ router.get('/mentor/pending-requests', async (req, res) => {
       endTime: { $gte: oneDayAgo },
     }).sort({ endTime: -1 }).limit(5);
 
-    const requests = [];
+    const requests: any[] = [];
 
     // Add recent paid bookings
     recentPaidSessions.forEach(session => {
@@ -412,7 +413,7 @@ router.get('/mentor/pending-requests', async (req, res) => {
 });
 
 // POST /api/mentor-sessions/create-demo
-router.post('/sessions/create-demo', async (req, res) => {
+router.post('/mentor-sessions/create-demo', async (req: Request, res: Response) => {
   try {
     const { mentorId } = req.query as { mentorId?: string };
     if (!mentorId) {
@@ -428,7 +429,7 @@ router.post('/sessions/create-demo', async (req, res) => {
 });
 
 // GET /api/mentor-sessions
-router.get('/mentor-sessions', async (req, res) => {
+router.get('/mentor-sessions', async (req: Request, res: Response) => {
   try {
     const { mentorId, scope = 'all' } = req.query as {
       mentorId?: string;
@@ -460,7 +461,7 @@ router.get('/mentor-sessions', async (req, res) => {
 });
 
 // GET /api/mentor-sessions/:id
-router.get('/mentor-sessions/:id', async (req, res) => {
+router.get('/mentor-sessions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -479,7 +480,7 @@ router.get('/mentor-sessions/:id', async (req, res) => {
 });
 
 // POST /api/mentor-sessions
-router.post('/mentor-sessions', async (req, res) => {
+router.post('/mentor-sessions', async (req: Request, res: Response) => {
   try {
     const {
       mentorId,
@@ -522,7 +523,7 @@ router.post('/mentor-sessions', async (req, res) => {
 });
 
 // PATCH /api/mentor-sessions/:id
-router.patch('/mentor-sessions/:id', async (req, res) => {
+router.patch('/mentor-sessions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -571,7 +572,7 @@ router.patch('/mentor-sessions/:id', async (req, res) => {
 });
 
 // GET /api/mentor-sessions/:id/verify-join
-router.get('/mentor-sessions/:id/verify-join', async (req, res) => {
+router.get('/mentor-sessions/:id/verify-join', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -636,7 +637,7 @@ router.get('/mentor-sessions/:id/verify-join', async (req, res) => {
 });
 
 // POST /api/mentor-sessions/:id/complete
-router.post('/mentor-sessions/:id/complete', async (req, res) => {
+router.post('/mentor-sessions/:id/complete', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -659,7 +660,7 @@ router.post('/mentor-sessions/:id/complete', async (req, res) => {
 });
 
 // DELETE /api/mentor-sessions/:id
-router.delete('/mentor-sessions/:id', async (req, res) => {
+router.delete('/mentor-sessions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -678,7 +679,7 @@ router.delete('/mentor-sessions/:id', async (req, res) => {
 });
 
 // GET /api/mentor-mentees
-router.get('/mentor-mentees', async (req, res) => {
+router.get('/mentor-mentees', async (req: Request, res: Response) => {
   try {
     const { mentorId } = req.query as { mentorId?: string };
     if (!mentorId) {
@@ -768,7 +769,7 @@ router.get('/mentor-mentees', async (req, res) => {
 });
 
 // POST /api/mentor-mentees - Add a new mentee
-router.post('/mentor-mentees', async (req, res) => {
+router.post('/mentor-mentees', async (req: Request, res: Response) => {
   try {
     const { mentorId, name, email, goal, status } = req.body;
     if (!mentorId || !name || !email || !goal) {
@@ -823,7 +824,7 @@ router.post('/mentor-mentees', async (req, res) => {
 });
 
 // GET /api/mentor-mentees/:id
-router.get('/mentor-mentees/:id', async (req, res) => {
+router.get('/mentor-mentees/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { mentorId } = req.query as { mentorId?: string };
@@ -935,7 +936,7 @@ router.get('/mentor-mentees/:id', async (req, res) => {
 });
 
 // GET /api/mentor-availability/slots
-router.get('/mentor-availability/slots', async (req, res) => {
+router.get('/mentor-availability/slots', async (req: Request, res: Response) => {
   try {
     const { mentorId, startDate, endDate } = req.query as {
       mentorId?: string;
@@ -997,7 +998,7 @@ router.get('/mentor-availability/slots', async (req, res) => {
 });
 
 // POST /api/mentor-sessions/confirm-payment
-router.post('/mentor-sessions/confirm-payment', async (req, res) => {
+router.post('/mentor-sessions/confirm-payment', async (req: Request, res: Response) => {
   try {
     const {
       mentorId,
@@ -1090,7 +1091,7 @@ router.post('/mentor-sessions/confirm-payment', async (req, res) => {
 });
 
 // GET /api/mentor/earnings - Get earnings data including monthly trends and payment history
-router.get('/mentor/earnings', async (req, res) => {
+router.get('/mentor/earnings', async (req: Request, res: Response) => {
   try {
     const { mentorId, period = 'all' } = req.query as { mentorId?: string; period?: string };
     if (!mentorId) {
@@ -1179,7 +1180,7 @@ router.get('/mentor/earnings', async (req, res) => {
     }
 
     // Get payment history (transactions) from filtered sessions
-    paymentHistory = filteredSessions.map(session => {
+    const paymentHistory = filteredSessions.map(session => {
       const endDate = session.endedAt || session.endTime || session.startTime;
       const sessionDate = new Date(endDate);
       
@@ -1194,13 +1195,13 @@ router.get('/mentor/earnings', async (req, res) => {
       const serviceName = session.title || `${duration} min session`;
 
       return {
-        id: `TXN-${session._id.toString().slice(-4)}`,
+        id: `TXN-${(session as any)._id.toString().slice(-4)}`,
         date: formattedDate,
         student: session.studentName,
         service: serviceName,
         amount: `₹${(session.amount || 0).toLocaleString('en-IN')}`,
         status: session.paymentStatus === 'paid' ? 'Paid' : 'Pending',
-        sessionId: session._id.toString(),
+        sessionId: (session as any)._id.toString(),
       };
     });
 
@@ -1231,7 +1232,7 @@ router.get('/mentor/earnings', async (req, res) => {
 // ============================================
 
 // GET /api/student-sessions - Get all sessions for a student
-router.get('/student-sessions', async (req, res) => {
+router.get('/student-sessions', async (req: Request, res: Response) => {
   try {
     const { studentId, scope = 'all' } = req.query as {
       studentId?: string;
@@ -1294,7 +1295,7 @@ router.get('/student-sessions', async (req, res) => {
 });
 
 // GET /api/student-sessions/:id - Get a specific session by ID for a student
-router.get('/student-sessions/:id', async (req, res) => {
+router.get('/student-sessions/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { studentId } = req.query as { studentId?: string };
@@ -1309,7 +1310,7 @@ router.get('/student-sessions/:id', async (req, res) => {
 
     // Format response for student view - include all fields including notes
     res.json({
-      id: session._id.toString(),
+      id: (session as any)._id.toString(),
       mentorId: session.mentorId,
       title: session.title,
       description: session.description,
