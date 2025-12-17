@@ -7,6 +7,7 @@ import {
   Search, Zap, Trophy, Building, TrendingUp, Mail, Paperclip,
   Filter, LayoutGrid, List, ChevronDown
 } from 'lucide-react';
+import { useUser } from "@clerk/nextjs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { api } from "@/lib/api";
 
 // --- WIDGET WRAPPER COMPONENT ---
 const Widget: FC<{ children: ReactNode; className?: string }> = ({
@@ -42,12 +44,12 @@ const Widget: FC<{ children: ReactNode; className?: string }> = ({
 
 // --- TYPESCRIPT TYPES & MOCK DATA ---
 type Job = {
-    id: number;
+    id: string;
     title: string;
     company: string;
     logoUrl: string;
     location: string;
-    type: 'Full-time' | 'Contract' | 'Internship';
+    type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
     salary: string;
     skills: string[];
     postedDate: string;
@@ -55,9 +57,9 @@ type Job = {
     featured?: boolean;
 };
 
-const allJobs: Job[] = [
+const fallbackJobs: Job[] = [
     {
-        id: 1,
+        id: "demo-1",
         title: "Senior Frontend Developer",
         company: "Aureeture",
         logoUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Aureeture",
@@ -70,7 +72,7 @@ const allJobs: Job[] = [
         featured: true,
     },
     {
-        id: 2,
+        id: "demo-2",
         title: "Full Stack Developer",
         company: "Fintech Innovations",
         logoUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=Fintech",
@@ -82,7 +84,7 @@ const allJobs: Job[] = [
         matchScore: 88,
     },
     {
-        id: 3,
+        id: "demo-3",
         title: "Product Design Intern",
         company: "HealthTech Startup",
         logoUrl: "https://api.dicebear.com/7.x/pixel-art/svg?seed=Health",
@@ -95,26 +97,40 @@ const allJobs: Job[] = [
     }
 ];
 
-const currentUser = {
-    name: "Aarav Sharma",
-    email: "aarav.sharma@email.com",
-    resume: "Aarav_Sharma_Resume_2025.pdf",
-    headline: "Aspiring AI Entrepreneur | B.Tech CSE"
+const formatRelativeTime = (iso?: string) => {
+  if (!iso) return "Recently";
+  const now = Date.now();
+  const t = new Date(iso).getTime();
+  const mins = Math.floor((now - t) / 60000);
+  if (mins < 60) return `${Math.max(1, mins)}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 };
 
 // --- MODAL COMPONENT ---
-const ApplyModal: FC<{ job: Job | null; user: typeof currentUser; onClose: () => void; }> = ({ job, user, onClose }) => {
+const ApplyModal: FC<{ job: Job | null; user: { name: string; email: string; resume: string; headline: string }; onClose: () => void; }> = ({ job, user, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!job) return null;
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         setIsSubmitting(true);
-        setTimeout(() => {
-            alert(`Successfully applied for ${job.title} at ${job.company}!`);
-            setIsSubmitting(false);
-            onClose();
-        }, 1500);
+        try {
+          const result = await api.jobs.apply(job.id, {
+            resumeUrl: user.resume,
+          });
+          if (!result.success) {
+            throw new Error(result.error?.message || "Failed to submit application");
+          }
+          alert(`Successfully applied for ${job.title} at ${job.company}!`);
+          onClose();
+        } catch (e: any) {
+          alert(e?.message || "Failed to submit application.");
+        } finally {
+          setIsSubmitting(false);
+        }
     };
 
     return (
@@ -200,23 +216,77 @@ const JobCard: FC<{ job: Job; index: number; onApplyClick: (job: Job) => void }>
 
 // --- MAIN PAGE COMPONENT ---
 const JobFinderPage: FC = () => {
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
-    const [filteredJobs, setFilteredJobs] = useState<Job[]>(allJobs);
+    const [jobs, setJobs] = useState<Job[]>(fallbackJobs);
+    const [filteredJobs, setFilteredJobs] = useState<Job[]>(fallbackJobs);
     const [applyingForJob, setApplyingForJob] = useState<Job | null>(null);
   const [typeFilter, setTypeFilter] = useState<"All" | Job["type"]>("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [loading, setLoading] = useState(false);
+
+  const currentUser = {
+    name: clerkUser?.fullName || clerkUser?.firstName || "Student",
+    email: clerkUser?.primaryEmailAddress?.emailAddress || "",
+    resume: "resume.pdf",
+    headline: "Aureeture user",
+  };
+
+  // Load jobs from backend (fallback to demo data on error)
+  useEffect(() => {
+    const load = async () => {
+      if (!isLoaded) return;
+      setLoading(true);
+      try {
+        const result = await api.jobs.list({ page: "1", limit: "50" });
+        if (!result.success) throw new Error(result.error?.message || "Failed to fetch jobs");
+
+        const payload = result.data as any;
+        const apiJobs = (payload?.jobs || []).map((j: any) => {
+          const min = j.salaryRange?.min;
+          const max = j.salaryRange?.max;
+          const salary =
+            typeof min === "number" && typeof max === "number"
+              ? `₹${min.toLocaleString("en-IN")}-${max.toLocaleString("en-IN")}`
+              : "Not disclosed";
+          return {
+            id: String(j._id),
+            title: j.title,
+            company: j.company,
+            logoUrl:
+              j.postedBy?.avatar ||
+              `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(j.company)}`,
+            location: j.location,
+            type: j.jobType,
+            salary,
+            skills: j.skills || [],
+            postedDate: formatRelativeTime(j.postedAt || j.createdAt),
+            matchScore: 85,
+            featured: false,
+          } as Job;
+        });
+
+        setJobs(apiJobs.length > 0 ? apiJobs : fallbackJobs);
+      } catch (e) {
+        setJobs(fallbackJobs);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [isLoaded]);
 
   // Effect to filter jobs when search term or filters change
     useEffect(() => {
         const lowercasedTerm = searchTerm.toLowerCase();
-    let jobs = allJobs;
+    let nextJobs = jobs;
 
     if (typeFilter !== "All") {
-      jobs = jobs.filter((job) => job.type === typeFilter);
+      nextJobs = nextJobs.filter((job) => job.type === typeFilter);
     }
 
     if (lowercasedTerm !== "") {
-      jobs = jobs.filter(
+      nextJobs = nextJobs.filter(
         (job) =>
                 job.title.toLowerCase().includes(lowercasedTerm) ||
                 job.company.toLowerCase().includes(lowercasedTerm) ||
@@ -226,8 +296,8 @@ const JobFinderPage: FC = () => {
             );
         }
 
-    setFilteredJobs(jobs);
-  }, [searchTerm, typeFilter]);
+    setFilteredJobs(nextJobs);
+  }, [searchTerm, typeFilter, jobs]);
     
     return (
     // WRAPPER ADDED: TooltipProvider prevents the runtime error
@@ -276,6 +346,9 @@ const JobFinderPage: FC = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setTypeFilter("Full-time")}>
                             Full-time
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setTypeFilter("Part-time")}>
+                            Part-time
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setTypeFilter("Contract")}>
                             Contract

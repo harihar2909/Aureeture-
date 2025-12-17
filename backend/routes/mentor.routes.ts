@@ -503,6 +503,11 @@ router.post('/mentor-sessions', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid startTime/endTime values.' });
     }
     const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+    // meetingLink is required at DB level; generate a default when not provided
+    const safeMeetingLink =
+      typeof meetingLink === 'string' && meetingLink.trim().length > 0
+        ? meetingLink.trim()
+        : `https://meet.jit.si/aureeture-session-${Date.now()}`;
     const session = await MentorSession.create({
       mentorId,
       studentName,
@@ -512,7 +517,7 @@ router.post('/mentor-sessions', async (req: Request, res: Response) => {
       startTime: start,
       endTime: end,
       durationMinutes,
-      meetingLink,
+      meetingLink: safeMeetingLink,
       status: 'scheduled',
     });
     res.status(201).json(session);
@@ -935,6 +940,37 @@ router.get('/mentor-mentees/:id', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/mentor-mentees/:id/message - Send a message to a mentee (stores in DB)
+router.post('/mentor-mentees/:id/message', async (req: Request, res: Response) => {
+  try {
+    const { id: menteeId } = req.params;
+    const { mentorId, message } = req.body as { mentorId?: string; message?: string };
+    if (!mentorId) {
+      return res.status(400).json({ message: 'mentorId is required' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'message is required' });
+    }
+
+    const msg = await MentorMenteeMessage.create({
+      mentorId,
+      menteeId,
+      message: message.trim(),
+    });
+
+    res.status(201).json({
+      id: String((msg as any)._id),
+      mentorId: msg.mentorId,
+      menteeId: msg.menteeId,
+      message: msg.message,
+      createdAt: msg.createdAt,
+    });
+  } catch (error) {
+    console.error('Error sending mentee message:', error);
+    res.status(500).json({ message: 'An error occurred on the server.' });
+  }
+});
+
 // GET /api/mentor-availability/slots
 router.get('/mentor-availability/slots', async (req: Request, res: Response) => {
   try {
@@ -946,9 +982,27 @@ router.get('/mentor-availability/slots', async (req: Request, res: Response) => 
     if (!mentorId) {
       return res.status(400).json({ message: 'mentorId is required' });
     }
-    const availability = await MentorAvailability.findOne({ mentorId });
+    let availability = await MentorAvailability.findOne({ mentorId });
+    // For demo/dev environments (and to make booking flows work out-of-the-box),
+    // auto-create a reasonable default availability if none exists yet.
     if (!availability) {
-      return res.status(404).json({ message: 'Mentor availability not found' });
+      availability = await MentorAvailability.create({
+        mentorId,
+        timezone: 'Asia/Kolkata',
+        weeklySlots: [
+          { day: 'Monday', startTime: '10:00', endTime: '18:00', isActive: true },
+          { day: 'Tuesday', startTime: '10:00', endTime: '18:00', isActive: true },
+          { day: 'Wednesday', startTime: '10:00', endTime: '18:00', isActive: true },
+          { day: 'Thursday', startTime: '10:00', endTime: '18:00', isActive: true },
+          { day: 'Friday', startTime: '10:00', endTime: '18:00', isActive: true },
+          { day: 'Saturday', startTime: '11:00', endTime: '16:00', isActive: true },
+          { day: 'Sunday', startTime: '11:00', endTime: '16:00', isActive: false },
+        ],
+        overrideSlots: [],
+        instantBookingEnabled: true,
+        minNoticeHours: 2,
+        maxSessionsPerWeek: 10,
+      });
     }
     const slots: Array<{
       id: string;

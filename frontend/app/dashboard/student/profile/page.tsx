@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { useProfile } from "@/contexts/ProfileContext";
 import { format } from "date-fns";
 import { useUser, useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 // --- TYPESCRIPT TYPES ---
 type PersonalInfoKey = 'name' | 'email' | 'phone' | 'location' | 'linkedin';
@@ -194,6 +195,7 @@ interface ProfilePageDashboardProps {
 const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
   onOpenSettings,
 }) => {
+  const router = useRouter();
 
   // --- STATE MANAGEMENT ---
   const { profile, updateProfile } = useProfile();
@@ -330,7 +332,7 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
       }
     };
 
-    if (isLoaded && user?.id && apiBase && getToken) {
+    if (isLoaded && user?.id && apiBase) {
       fetchProfile();
     } else if (isLoaded && user) {
       // If no API base URL, use Clerk user data
@@ -565,7 +567,7 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
     }
 
     // Auto-save to backend
-    if (user?.id && apiBase && getToken) {
+    if (user?.id && apiBase) {
       try {
         const token = await getToken();
         await fetch(`${apiBase}/api/profile/student`, {
@@ -1318,7 +1320,9 @@ const ProfilePageDashboard: FC<ProfilePageDashboardProps> = ({
                                         <p className="text-xs text-zinc-500">Match Score</p>
                                         <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{job.match}%</p>
                                     </div>
-                                    <Button size="sm">Apply Now</Button>
+                                    <Button size="sm" onClick={() => router.push("/dashboard/student/job-finder")}>
+                                      Apply Now
+                                    </Button>
                                 </CardContent>
                             </Card>
                         ))}

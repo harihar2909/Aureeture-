@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -46,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/lib/api";
 
 type Mentee = {
   id: string;
@@ -168,6 +169,7 @@ const MenteeCard: React.FC<{
 const MentorMenteesPage: React.FC = () => {
   const { user, isLoaded, isSignedIn } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState<"all" | Mentee["status"]>("all");
   const [mentees, setMentees] = useState<Mentee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,8 +191,6 @@ const MentorMenteesPage: React.FC = () => {
   });
   const [addingMentee, setAddingMentee] = useState(false);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-
   const canLoad = useMemo(
     () => isLoaded && isSignedIn && !!user?.id,
     [isLoaded, isSignedIn, user?.id]
@@ -202,41 +202,14 @@ const MentorMenteesPage: React.FC = () => {
       return;
     }
 
-    if (!apiBase) {
-      setError("API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in your environment variables.");
-      setLoading(false);
-      setMentees([]);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(
-        `${apiBase}/api/mentor-mentees?mentorId=${encodeURIComponent(user.id)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
-      );
-
-      if (!res.ok) {
-        let errorMessage = "Failed to fetch mentees";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = `HTTP ${res.status}: ${res.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = (await res.json()) as MenteesResponse;
-      setMentees(data.mentees || []);
+      const result = await api.mentorMentees.getAll(user.id);
+      if (!result.success) throw new Error(result.error?.message || "Failed to fetch mentees");
+      const data = result.data as MenteesResponse;
+      setMentees(data?.mentees || []);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching mentees:", err);
@@ -254,7 +227,7 @@ const MentorMenteesPage: React.FC = () => {
       const interval = setInterval(fetchMentees, 30000);
       return () => clearInterval(interval);
     }
-  }, [canLoad, user?.id, apiBase]);
+  }, [canLoad, user?.id]);
 
   // Refresh on window focus
   useEffect(() => {
@@ -265,7 +238,18 @@ const MentorMenteesPage: React.FC = () => {
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [canLoad, user?.id, apiBase]);
+  }, [canLoad, user?.id]);
+
+  // If navigated with ?message=<menteeId>, open the message modal automatically
+  useEffect(() => {
+    const targetId = searchParams.get("message");
+    if (!targetId || mentees.length === 0) return;
+    const mentee = mentees.find((m) => m.id === targetId);
+    if (mentee) {
+      handleMessage(mentee);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, mentees]);
 
   const filteredMentees =
     filter === "all"
@@ -277,40 +261,17 @@ const MentorMenteesPage: React.FC = () => {
       return;
     }
 
-    if (!apiBase || !user?.id) {
-      alert("API configuration error. Please check your environment variables.");
-      return;
-    }
-
     setAddingMentee(true);
     try {
-      const res = await fetch(`${apiBase}/api/mentor-mentees`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          mentorId: user.id,
-          name: newMenteeForm.name,
-          email: newMenteeForm.email,
-          goal: newMenteeForm.goal,
-          status: newMenteeForm.status,
-        }),
+      if (!user?.id) throw new Error("Not signed in");
+      const result = await api.mentorMentees.add({
+        mentorId: user.id,
+        name: newMenteeForm.name,
+        email: newMenteeForm.email,
+        goal: newMenteeForm.goal,
+        status: newMenteeForm.status,
       });
-
-      if (!res.ok) {
-        let errorMessage = "Failed to add mentee";
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = `HTTP ${res.status}: ${res.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const newMentee = await res.json();
+      if (!result.success) throw new Error(result.error?.message || "Failed to add mentee");
       // Refetch mentees to ensure consistency
       await fetchMentees();
       setIsAddMenteeOpen(false);
@@ -334,23 +295,12 @@ const MentorMenteesPage: React.FC = () => {
 
     setSendingMessage(true);
     try {
-      if (apiBase && user?.id) {
-        const res = await fetch(`${apiBase}/api/mentor-mentees/${selectedMentee.id}/message`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            mentorId: user.id,
-            message: messageText,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to send message");
-        }
-      }
+      if (!user?.id) throw new Error("Not signed in");
+      const result = await api.mentorMentees.sendMessage(selectedMentee.id, {
+        mentorId: user.id,
+        message: messageText,
+      });
+      if (!result.success) throw new Error(result.error?.message || "Failed to send message");
 
       // Show success feedback
       setMessageText("");

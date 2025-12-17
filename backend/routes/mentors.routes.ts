@@ -124,7 +124,7 @@ router.get('/mentors', async (req, res) => {
 
     // Get users for these Clerk IDs
     const users = await User.find({ clerkId: { $in: mentorClerkIdList } });
-    const mentorUserIds = users.map(u => u._id.toString());
+    const mentorUserIds = users.map(u => (u as any)._id.toString());
 
     // Get all mentor profiles
     const profiles = await Profile.find({

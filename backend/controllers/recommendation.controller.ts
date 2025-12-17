@@ -47,8 +47,20 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
  * Fetches and ranks user profiles based on AI-powered project similarity and keyword filters.
  */
 export const getRecommendations = asyncHandler(async (req: Request, res: Response) => {
-    // We get the authenticated user's ID from the protectRoute middleware
-    const currentUserId = (req as any).user._id;
+    // We get the authenticated user's Clerk userId from our auth middleware
+    const clerkUserId = (req as any).auth?.userId as string | undefined;
+    if (!clerkUserId) {
+        res.status(401);
+        throw new Error('Unauthorized');
+    }
+
+    // Map Clerk userId -> Mongo User _id (UserProfile.userId is an ObjectId ref to User)
+    const currentUser = await User.findOne({ clerkId: clerkUserId });
+    if (!currentUser) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+    const currentUserId = currentUser._id;
 
     // Optional filters from the frontend
     const { careerGoal, institution } = req.body;

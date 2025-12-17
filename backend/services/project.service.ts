@@ -51,6 +51,7 @@ export const joinProject = async (userId: string, projectId: string) => {
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const project = await Project.findById(projectId);
     if (!project) {
@@ -65,11 +66,11 @@ export const joinProject = async (userId: string, projectId: string) => {
         throw new Error('Project is full');
     }
 
-    if (project.participants.includes(user._id)) {
+    if (project.participants.includes(userObjectId)) {
         throw new Error('You are already a participant in this project');
     }
 
-    project.participants.push(user._id);
+    project.participants.push(userObjectId);
     
     // If project is full, change status to In Progress
     if (project.participants.length >= project.maxParticipants) {
@@ -78,7 +79,9 @@ export const joinProject = async (userId: string, projectId: string) => {
 
     await project.save();
 
-    return project.populate(['mentorId', 'participants'], 'name avatar');
+    await (project as any).populate('mentorId', 'name avatar');
+    await (project as any).populate('participants', 'name avatar');
+    return project;
 };
 
 export const getUserProjects = async (userId: string) => {
@@ -86,11 +89,12 @@ export const getUserProjects = async (userId: string) => {
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const projects = await Project.find({
         $or: [
-            { participants: user._id },
-            { mentorId: user._id }
+            { participants: userObjectId },
+            { mentorId: userObjectId }
         ]
     })
     .populate('mentorId', 'name avatar')

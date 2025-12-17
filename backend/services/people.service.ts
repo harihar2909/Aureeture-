@@ -7,9 +7,10 @@ export const getPeopleSuggestions = async (userId: string, page: number, limit: 
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const skip = (page - 1) * limit;
-    const query: any = { userId: { $ne: user._id } };
+    const query: any = { userId: { $ne: userObjectId } };
 
     // Apply filters
     if (filters.skills) {
@@ -23,16 +24,16 @@ export const getPeopleSuggestions = async (userId: string, page: number, limit: 
     // Get existing connections to exclude them
     const existingConnections = await Connection.find({
         $or: [
-            { requester: user._id },
-            { recipient: user._id }
+            { requester: userObjectId },
+            { recipient: userObjectId }
         ]
     });
 
     const connectedUserIds = existingConnections.map(conn => 
-        conn.requester.toString() === user._id.toString() ? conn.recipient : conn.requester
+        conn.requester.toString() === userObjectId.toString() ? conn.recipient : conn.requester
     );
 
-    query.userId = { $nin: [...connectedUserIds, user._id] };
+    query.userId = { $nin: [...connectedUserIds, userObjectId] };
 
     const profiles = await Profile.find(query)
         .populate('userId', 'name avatar email')
@@ -57,11 +58,12 @@ export const getUserConnections = async (userId: string) => {
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const connections = await Connection.find({
         $or: [
-            { requester: user._id },
-            { recipient: user._id }
+            { requester: userObjectId },
+            { recipient: userObjectId }
         ],
         status: 'accepted'
     })
@@ -71,7 +73,7 @@ export const getUserConnections = async (userId: string) => {
 
     // Format connections to show the other person
     const formattedConnections = connections.map(conn => {
-        const otherUser = conn.requester._id.toString() === user._id.toString() 
+        const otherUser = conn.requester._id.toString() === userObjectId.toString() 
             ? conn.recipient 
             : conn.requester;
         
@@ -91,6 +93,7 @@ export const sendConnectionRequest = async (requesterId: string, recipientId: st
     if (!requester) {
         throw new Error('Requester not found');
     }
+    const requesterObjectId = (requester as any)._id;
 
     const recipient = await User.findById(recipientId);
     if (!recipient) {
@@ -100,8 +103,8 @@ export const sendConnectionRequest = async (requesterId: string, recipientId: st
     // Check if connection already exists
     const existingConnection = await Connection.findOne({
         $or: [
-            { requester: requester._id, recipient: recipientId },
-            { requester: recipientId, recipient: requester._id }
+            { requester: requesterObjectId, recipient: recipientId },
+            { requester: recipientId, recipient: requesterObjectId }
         ]
     });
 
@@ -110,13 +113,15 @@ export const sendConnectionRequest = async (requesterId: string, recipientId: st
     }
 
     const connection = await Connection.create({
-        requester: requester._id,
+        requester: requesterObjectId,
         recipient: recipientId,
         message,
         status: 'pending'
     });
 
-    return connection.populate(['requester', 'recipient'], 'name avatar email');
+    await (connection as any).populate('requester', 'name avatar email');
+    await (connection as any).populate('recipient', 'name avatar email');
+    return connection;
 };
 
 export const respondToConnectionRequest = async (userId: string, connectionId: string, status: 'accepted' | 'declined') => {
@@ -124,6 +129,7 @@ export const respondToConnectionRequest = async (userId: string, connectionId: s
     if (!user) {
         throw new Error('User not found');
     }
+    const userObjectId = (user as any)._id;
 
     const connection = await Connection.findById(connectionId);
     if (!connection) {
@@ -131,14 +137,16 @@ export const respondToConnectionRequest = async (userId: string, connectionId: s
     }
 
     // Verify user is the recipient
-    if (connection.recipient.toString() !== user._id.toString()) {
+    if (connection.recipient.toString() !== userObjectId.toString()) {
         throw new Error('Unauthorized to respond to this connection request');
     }
 
     connection.status = status;
     await connection.save();
 
-    return connection.populate(['requester', 'recipient'], 'name avatar email');
+    await (connection as any).populate('requester', 'name avatar email');
+    await (connection as any).populate('recipient', 'name avatar email');
+    return connection;
 };
 
 

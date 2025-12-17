@@ -3,6 +3,7 @@ import { getProfile, updateProfile, createProfile } from '../controllers/profile
 import { customAuthMiddleware } from '../middleware/auth.middleware';
 import { validateRequest } from '../middleware/validate.middleware';
 import { createProfileSchema, updateProfileSchema } from '../utils/validationSchemas';
+import * as ProfileService from '../services/profile.service';
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.get('/student', async (req: any, res: any) => {
     }
 
     // Format timeline items from workHistory, education, and projects
-    const timelineItems = [];
+    const timelineItems: any[] = [];
     
     // Add work history
     if (profile.workHistory && profile.workHistory.length > 0) {

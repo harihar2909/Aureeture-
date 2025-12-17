@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs"
 import ConditionalNavbar from "@/components/conditional-navbar"
 import ConditionalFooter from "@/components/conditional-footer"
 import SkipToContent from "@/components/skip-to-content"
+import ApiAuthProvider from "@/components/api-auth-provider"
 
 // Using system fonts to avoid Google Fonts loading issues
 const systemFonts = {
@@ -75,6 +76,7 @@ export default function RootLayout({
       <body className={systemFonts.inter.className}>
         <ClerkProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <ApiAuthProvider />
             <SkipToContent />
             <ConditionalNavbar />
             <main id="main-content">

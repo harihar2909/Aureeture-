@@ -19,9 +19,13 @@ export const createProfileSchema = z.object({
   body: z.object({
     careerStage: z.string().optional(),
     longTermGoal: z.string().optional(),
+    currentRole: z.string().optional(),
+    currentCompany: z.string().optional(),
+    joinDate: z.string().optional(),
     personalInfo: z.object({
       phone: z.string().optional(),
       linkedIn: z.string().optional(),
+      location: z.string().optional(),
     }).optional(),
     workHistory: z.array(z.object({
       company: z.string(),
@@ -42,6 +46,38 @@ export const createProfileSchema = z.object({
       link: z.string().optional(),
     })).optional(),
     skills: z.array(z.string()).optional(),
+    tasks: z.object({
+      todo: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+      later: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+      done: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+    }).optional(),
+    careerGoals: z.array(z.object({
+      name: z.string(),
+      progress: z.number(),
+    })).optional(),
+    analytics: z.object({
+      profileCompletion: z.number().optional(),
+      skillScore: z.number().optional(),
+      views: z.number().optional(),
+      connects: z.number().optional(),
+      applications: z.number().optional(),
+      matches: z.number().optional(),
+    }).optional(),
     preferences: z.object({
       location: z.array(z.string()),
       workModel: z.enum(['Remote', 'Hybrid', 'On-site']),
@@ -58,9 +94,13 @@ export const updateProfileSchema = z.object({
   body: z.object({
     careerStage: z.string().optional(),
     longTermGoal: z.string().optional(),
+    currentRole: z.string().optional(),
+    currentCompany: z.string().optional(),
+    joinDate: z.string().optional(),
     personalInfo: z.object({
       phone: z.string().optional(),
       linkedIn: z.string().optional(),
+      location: z.string().optional(),
     }).optional(),
     workHistory: z.array(z.object({
       company: z.string(),
@@ -81,6 +121,38 @@ export const updateProfileSchema = z.object({
       link: z.string().optional(),
     })).optional(),
     skills: z.array(z.string()).optional(),
+    tasks: z.object({
+      todo: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+      later: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+      done: z.array(z.object({
+        id: z.number(),
+        title: z.string(),
+        priority: z.enum(['high', 'medium', 'low']),
+        deadline: z.coerce.date().optional(),
+      })).optional(),
+    }).optional(),
+    careerGoals: z.array(z.object({
+      name: z.string(),
+      progress: z.number(),
+    })).optional(),
+    analytics: z.object({
+      profileCompletion: z.number().optional(),
+      skillScore: z.number().optional(),
+      views: z.number().optional(),
+      connects: z.number().optional(),
+      applications: z.number().optional(),
+      matches: z.number().optional(),
+    }).optional(),
     preferences: z.object({
       location: z.array(z.string()),
       workModel: z.enum(['Remote', 'Hybrid', 'On-site']),

@@ -10,6 +10,7 @@ import mentorRoutes from './mentor.routes';
 import mentorsRoutes from './mentors.routes';
 import sessionRoutes from './session.routes';
 import contactRoutes from './contact.routes';
+import recommendationRoutes from './recommendation.route';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.use('/', mentorRoutes);
 router.use('/', mentorsRoutes); // Handles /api/mentors (for students to browse mentors)
 router.use('/session', sessionRoutes);
 router.use('/', contactRoutes); // Leads, enterprise-demo, contact
+router.use('/recommendations', recommendationRoutes);
 
 export default router;
 
